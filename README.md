@@ -25,9 +25,9 @@ To analyze student drop-off patterns in the !["Data Analysis in R"](https://step
 
 ### **Tech Stack**  
 - **Language:** R 
-- **Libraries:** `pandas`, `numpy`, `scikit-learn`, `matplotlib`, `seaborn`  
-- **Model:** Random Forest Classifier  
-- **Techniques:** feature engineering, class balancing, hyperparameter tuning, model evaluation (`ROC-AUC`, `F1-score`), and data leakage analysis  
+- **Libraries:** `tidyverse` (dplyr, ggplot2), `lubridate`, `data.table`, `scales`, `formattable`,`here`, `corrplot`, `knitr`, `randomForest`
+- **Models:** K-Means (Clustering), Random Forest (Classification) 
+- - **Techniques:** Funnel analysis, feature engineering, class imbalance handling, behavioral segmentation.
 
 
 
@@ -35,22 +35,45 @@ To analyze student drop-off patterns in the !["Data Analysis in R"](https://step
 
 ## Dataset Overview
 
-- Source: [BMW Worldwide Sales Records (2010–2024) on Kaggle](https://www.kaggle.com/datasets/ahmadrazakashif/bmw-worldwide-sales-records-20102024)  
-- ~50,000 records  
-- Key features: `Model`, `Year`, `Engine_Size_L`, `Transmission`, `Fuel_Type`, `Color`, `Mileage_KM`, `Price_USD`, `Region`  
-- Target variable: `Sales_Classification` (High / Low)
+The project uses two primary datasets from Stepik, covering student interactions and assignment submissions:
+
+- [`events_train.csv`](https://stepik.org/media/attachments/course/4852/event_data_train.zip)
+  Contains event-level data describing user interactions.
+
+  **Variables:**
+  - `step_id` — anonymized step identifier. 
+  - `user_id` — anonymized user identifier.  
+  - `timestamp` — event time in Unix timestamp format.
+  - `action` — type of user action:
+    - `discovered` — navigated to a step. 
+    - `viewed` — viewed the content.  
+    - `started_attempt` — began solving a practical task.  
+    - `passed` — successfully completed the step (applies to both theory and tasks). 
+---
+  
+- [`submissions_train.csv`](https://stepik.org/media/attachments/course/4852/submissions_data_train.zip)
+  Contains information about solution submissions for practical assignments.
+
+  **Variables:**
+  - `step_id` — anonymized step identifier  
+  - `user_id` — anonymized user identifier  
+  - `timestamp` — submission time in Unix timestamp format  
+  - `submission_status` — submission result (`correct` / `wrong`)  
 
 ---
 ## Project Structure
 ```
-bmw-sales-eda-classification/
-├── data/                 # Raw CSV datasets
-├── images/               # Figures for README
-├── notebooks/            # Jupyter notebooks
-│   └── bmw_sales_analysis.ipynb
-├── requirements.txt      # Python dependencies
+Stepik-Product-Analytics-Churn-ML/
+├── data/                 # Raw and processed data
+│   ├── .gitkeep          # (опционально) позволяет залить пустую папку на GitHub
+├── images/               # Visualizations for README (plots, funnels, clusters)
+├── notebooks/            # Jupyter Notebooks (or RMarkdown files)
+│   ├── 01_Product_Analysis_and_EDA.ipynb
+│   └── 02_Clustering_and_Churn_Prediction.ipynb
+├── .gitignore            # Files to be ignored by Git (e.g., large .csv files)
+├── LICENSE               # MIT License
 ├── README.md             # Project documentation
-└── LICENSE               # License file
+└── requirements.R        # Script to install all necessary R packages
 ```
 
 ---
