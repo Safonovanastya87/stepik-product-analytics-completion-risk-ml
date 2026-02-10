@@ -1,52 +1,41 @@
-# History files
+# --- R Specific Files ---
 .Rhistory
 .Rapp.history
-
-# Session Data files
 .RData
 .RDataTmp
-
-# User-specific files
 .Ruserdata
-
-# Example code in package build process
+.Rproj.user/
+.Renviron
 *-Ex.R
 
-# Output files from R CMD build
+# --- Build and Check Outputs ---
 /*.tar.gz
-
-# Output files from R CMD check
 /*.Rcheck/
-
-# RStudio files
-.Rproj.user/
-
-# produced vignettes
 vignettes/*.html
 vignettes/*.pdf
+docs/
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+# --- Environment & Credentials ---
 .httr-oauth
+.DS_Store
 
-# knitr and R markdown default cache directories
+# --- Jupyter Notebook Specific ---
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# --- Data Management (The most important part) ---
+# We want the 'data' folder to exist on GitHub but remain empty
+data/*
+
+# Do not ignore the .gitkeep file so GitHub tracks the folder
+!data/.gitkeep
+
+# Ignore any potential temp files or cache
 *_cache/
 /cache/
-
-# Temporary files created by R markdown
 *.utf8.md
 *.knit.md
 
-# R Environment Variables
-.Renviron
-
-# pkgdown site
-docs/
-
-# translation temp files
-po/*~
-
-# RStudio Connect folder
-rsconnect/
-
-# Data
+# --- OS Specific ---
+Thumbs.db
 data/
