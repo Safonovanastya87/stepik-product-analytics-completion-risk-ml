@@ -4,6 +4,7 @@
 ![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange)
 ![Machine Learning](https://img.shields.io/badge/ML-Random%20Forest%20%7C%20XGBoost-green)
 ![Status](https://img.shields.io/badge/Status-Portfolio%20Project-purple)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Project Overview
 
