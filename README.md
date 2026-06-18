@@ -193,16 +193,17 @@ The resulting framework serves as a decision-support system for retention initia
 ## Project Structure
 
 ```text
-stepik-edtech-analytics/
+stepik-product-analytics-completion-risk-ml/
 ├── notebooks/
-│   ├── 01_product_analysis_eda.ipynb
+│   ├── 01_product_analysis_activation_gap.ipynb
 │   ├── 02_behavioral_segmentation.ipynb
 │   └── 03_completion_risk_modeling.ipynb
-├── data/
-├── images/
+├── .gitignore
+├── LICENSE
 ├── README.md
-└── requirements.R
+└── renv.lock
 ```
+
 
 ---
 
