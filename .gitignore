@@ -66,3 +66,7 @@ results/*
 # --- OS Specific ---
 Thumbs.db
 
+# --- renv ---
+renv/
+!renv.lock
+
