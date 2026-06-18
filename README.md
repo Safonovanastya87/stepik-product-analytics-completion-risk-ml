@@ -206,6 +206,23 @@ stepik-edtech-analytics/
 
 ---
 
+## Reproducibility
+
+This project includes an `renv.lock` file to support reproducible execution.
+
+The lock file records the package versions used during development and analysis, allowing the project environment to be restored consistently across different machines.
+
+To recreate the original environment:
+
+```r
+install.packages("renv")
+renv::restore()
+```
+
+This will install the package versions used when the project was developed and tested.
+
+---
+
 ## Final Conclusion
 
 This project demonstrates how product analytics, learning analytics, behavioral segmentation, and machine learning can be combined to understand learner behavior and support retention decisions.
