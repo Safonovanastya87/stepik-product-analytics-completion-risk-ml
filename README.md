@@ -207,20 +207,17 @@ stepik-product-analytics-completion-risk-ml/
 
 ---
 
-## Reproducibility
+## Reproducibility Note
 
-This project includes an `renv.lock` file to support reproducible execution.
+This project includes an `renv.lock` file that records the R package versions used during development and validation.
+To reproduce the project environment, open the project root directory and run:
 
-The lock file records the package versions used during development and analysis, allowing the project environment to be restored consistently across different machines.
+>```r
+> install.packages("renv")
+> renv::restore()
+> ```
 
-To recreate the original environment:
-
-```r
-install.packages("renv")
-renv::restore()
-```
-
-This will install the package versions used when the project was developed and tested.
+The project was developed and tested with R 4.6.0 and `xgboost` 3.2.1.1. The exact package environment is recorded in `renv.lock`.
 
 ---
 
