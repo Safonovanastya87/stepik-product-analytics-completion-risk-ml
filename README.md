@@ -127,28 +127,30 @@ The modeling workflow includes:
 ## Key Findings
 
 * The largest learner drop-off occurs before practical engagement begins.
-* Practical activation is one of the strongest indicators of eventual completion.
-* Learners can be grouped into distinct behavioral segments with different completion outcomes.
-* Early 10-day behavior contains meaningful predictive information.
-* Progress-aware models achieve the strongest performance.
-* Engagement-only models remain informative even after removing direct progress-related variables.
-* Behavioral analytics and machine learning can be combined into a unified retention-analysis framework.
+* Practical activation is one of the strongest indicators of eventual course completion.
+* Learners can be grouped into distinct behavioral segments with different engagement patterns and completion outcomes.
+* Learner behavior during the first 10 days contains meaningful information for early completion-risk prediction.
+* The engineered progress-aware XGBoost approach achieves the strongest overall predictive performance.
+* XGB_Baseline is retained as the final model because tuning provides only a marginal PR-AUC improvement while producing a slightly less favorable F2–FPR trade-off.
+* A validation-set ablation shows that engagement-only features remain informative after direct progress- and submission-related variables are removed.
+* Behavioral segmentation, funnel analysis, and predictive modeling can be combined into a unified learner-retention framework.
 
 ---
 
 ## Business Impact
 
-The project demonstrates how educational-platform data can support proactive learner-retention strategies.
+The project demonstrates how educational-platform data can support proactive and capacity-aware learner-retention strategies.
 
 Potential applications include:
 
-* identifying at-risk learners;
-* prioritizing intervention efforts;
-* onboarding support;
-* re-engagement campaigns;
-* personalized learner guidance.
+* identifying and ranking learners by completion risk;
+* prioritizing limited intervention resources;
+* improving onboarding and practical activation;
+* targeting re-engagement campaigns;
+* providing personalized learner guidance;
+* evaluating retention strategies across behavioral segments.
 
-The resulting framework serves as a decision-support system for retention initiatives rather than a fully automated intervention engine.
+The resulting framework is intended as a decision-support system. It can help retention teams identify priority groups and select appropriate interventions, but it should not be used as a fully automated decision or intervention engine.
 
 ---
 
