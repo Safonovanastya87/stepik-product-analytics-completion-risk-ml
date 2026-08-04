@@ -1,0 +1,6 @@
+"user_id","n_passed_all","n_viewed_all","n_started_practical","n_passed_practical","n_submissions","submission_correct_rate","active_days","days_since_last_action","score_per_active_day","steps_per_active_day","completion_probability","completion_risk"
+1001,0,5,0,0,0,0,1,9,0,5,0.0125214271247387,0.987478572875261
+1002,3,15,2,1,4,0.25,3,6,1,5,0.0176385138183832,0.982361486181617
+1003,10,30,8,6,12,0.5,6,3,1.67,5,0.0391743518412113,0.960825648158789
+1004,25,55,20,18,28,0.64,9,1,2.78,6.11,0.226674631237984,0.773325368762016
+1005,2,20,1,0,5,0,4,7,0.5,5,0.0169204398989677,0.983079560101032
