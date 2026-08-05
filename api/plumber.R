@@ -1,4 +1,4 @@
-# Completion Risk Prediction API
+## Completion Risk Prediction API
 
 source("R/load_artifact.R")
 source("R/validate_prediction_input.R")
@@ -28,7 +28,10 @@ api <- plumber::pr_set_serializer(
 )
 
 
+# ============================================================
 # GET /health
+# ============================================================
+
 api <- plumber::pr_get(
   pr = api,
   path = "/health",
@@ -45,17 +48,28 @@ api <- plumber::pr_get(
       )[1],
       required_feature_count = length(
         feature_cols
-      )
+      ),
+      observation_window_days =
+        loaded_model$artifact$
+        model_metadata$
+        observation_window_days
     )
   }
 )
 
 
+# ============================================================
 # POST /predict
+# ============================================================
+
 api <- plumber::pr_post(
   pr = api,
   path = "/predict",
   handler = function(req, res) {
+    # ----------------------------------------------------------
+    # Validate request body
+    # ----------------------------------------------------------
+
     request_body <- req$body
 
     if (is.null(request_body)) {
@@ -67,6 +81,10 @@ api <- plumber::pr_post(
         )
       )
     }
+
+    # ----------------------------------------------------------
+    # Convert JSON request to a one-row data frame
+    # ----------------------------------------------------------
 
     prediction_input <- tryCatch(
       as.data.frame(
@@ -80,7 +98,7 @@ api <- plumber::pr_post(
 
     if (
       is.null(prediction_input) ||
-      nrow(prediction_input) != 1
+      nrow(prediction_input) != 1L
     ) {
       res$status <- 400
 
@@ -94,6 +112,10 @@ api <- plumber::pr_post(
       )
     }
 
+    # ----------------------------------------------------------
+    # Validate learner identifier
+    # ----------------------------------------------------------
+
     if (!"user_id" %in% names(prediction_input)) {
       res$status <- 400
 
@@ -103,6 +125,54 @@ api <- plumber::pr_post(
         )
       )
     }
+
+    user_id_column <- prediction_input[["user_id"]]
+
+    if (length(user_id_column) != 1L) {
+      res$status <- 400
+
+      return(
+        list(
+          error = "`user_id` must contain exactly one value."
+        )
+      )
+    }
+
+    # Depending on JSON conversion, a value may appear
+    # as a regular vector or as a list-column.
+    user_id <- if (is.list(user_id_column)) {
+      user_id_column[[1]]
+    } else {
+      user_id_column[[1]]
+    }
+
+    valid_user_id <- (
+      length(user_id) == 1L &&
+        is.numeric(user_id) &&
+        !is.na(user_id) &&
+        is.finite(user_id) &&
+        user_id > 0 &&
+        abs(user_id - round(user_id)) <=
+          sqrt(.Machine$double.eps)
+    )
+
+    if (!isTRUE(valid_user_id)) {
+      res$status <- 400
+
+      return(
+        list(
+          error = "`user_id` must be a positive whole number."
+        )
+      )
+    }
+
+    prediction_input$user_id <- as.numeric(
+      user_id
+    )
+
+    # ----------------------------------------------------------
+    # Validate model features and generate prediction
+    # ----------------------------------------------------------
 
     tryCatch(
       {
@@ -114,10 +184,18 @@ api <- plumber::pr_post(
         list(
           user_id =
             prediction$user_id[[1]],
+
           completion_probability =
             prediction$completion_probability[[1]],
+
           completion_risk =
-            prediction$completion_risk[[1]]
+            prediction$completion_risk[[1]],
+
+          classification_threshold =
+            prediction$classification_threshold[[1]],
+
+          predicted_completion_status =
+            prediction$predicted_completion_status[[1]]
         )
       },
       error = function(error) {
