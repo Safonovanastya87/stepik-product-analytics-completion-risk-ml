@@ -3,6 +3,10 @@ predict_completion_risk <- function(
   data,
   loaded_model
 ) {
+  # ============================================================
+  # Validate loaded model structure
+  # ============================================================
+
   if (
     !is.list(loaded_model) ||
     is.null(loaded_model$model) ||
@@ -21,14 +25,47 @@ predict_completion_risk <- function(
     )
   }
 
+  # ============================================================
+  # Retrieve inference configuration
+  # ============================================================
+
   feature_cols <- loaded_model$artifact$
     inference_settings$
     feature_cols
+
+  classification_threshold <- loaded_model$artifact$
+    inference_settings$
+    threshold
+
+  if (
+    length(classification_threshold) != 1L ||
+    !is.numeric(classification_threshold) ||
+    is.na(classification_threshold) ||
+    !is.finite(classification_threshold) ||
+    classification_threshold < 0 ||
+    classification_threshold > 1
+  ) {
+    stop(
+      paste0(
+        "The model artifact contains an invalid ",
+        "classification threshold."
+      ),
+      call. = FALSE
+    )
+  }
+
+  # ============================================================
+  # Validate external prediction input
+  # ============================================================
 
   feature_data <- validate_prediction_input(
     data = data,
     feature_cols = feature_cols
   )
+
+  # ============================================================
+  # Generate model predictions
+  # ============================================================
 
   prediction_matrix <- data.matrix(
     feature_data
@@ -41,8 +78,12 @@ predict_completion_risk <- function(
     )
   )
 
+  # ============================================================
+  # Validate model output
+  # ============================================================
+
   if (
-    length(completion_probability) != nrow(data) ||
+    length(completion_probability) != nrow(feature_data) ||
     anyNA(completion_probability) ||
     any(!is.finite(completion_probability))
   ) {
@@ -62,6 +103,20 @@ predict_completion_risk <- function(
     )
   }
 
+  # ============================================================
+  # Calculate diagnostic prediction status
+  # ============================================================
+
+  predicted_completion_status <- ifelse(
+    completion_probability >= classification_threshold,
+    "Predicted_Completed",
+    "Predicted_Not_Completed"
+  )
+
+  # ============================================================
+  # Build prediction result
+  # ============================================================
+
   result <- data
 
   result$completion_probability <-
@@ -69,6 +124,12 @@ predict_completion_risk <- function(
 
   result$completion_risk <-
     1 - completion_probability
+
+  result$classification_threshold <-
+    classification_threshold
+
+  result$predicted_completion_status <-
+    predicted_completion_status
 
   result
 }
