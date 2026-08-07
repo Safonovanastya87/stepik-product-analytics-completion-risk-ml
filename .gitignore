@@ -67,6 +67,5 @@ results/*
 Thumbs.db
 
 # --- renv ---
-renv/
-!renv.lock
+# Local renv-generated files are ignored by renv/.gitignore.
 
