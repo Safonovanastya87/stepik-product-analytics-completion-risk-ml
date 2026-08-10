@@ -753,83 +753,6 @@ format_batch_input_preview <- function(data) {
   preview
 }
 
-build_priority_queue_from_predictions <- function(
-  predictions,
-  capacity
-) {
-
-  if (
-    !is.data.frame(predictions) ||
-    nrow(predictions) == 0L ||
-    !"completion_risk" %in% names(predictions)
-  ) {
-
-    return(
-      data.frame()
-    )
-  }
-
-
-  capacity <- as.integer(capacity)
-
-
-  sorted <- predictions[
-    order(
-      -as.numeric(
-        predictions$completion_risk
-      ),
-      na.last = TRUE
-    ),
-    ,
-    drop = FALSE
-  ]
-
-
-  take_n <- min(
-    capacity,
-    nrow(sorted)
-  )
-
-
-  queue <- sorted[
-    seq_len(take_n),
-    ,
-    drop = FALSE
-  ]
-
-
-  queue$risk_rank <- seq_len(
-    nrow(queue)
-  )
-
-
-  preferred_order <- c(
-    "risk_rank",
-    "user_id",
-    "completion_risk"
-  )
-
-
-  remaining_columns <- setdiff(
-    names(queue),
-    preferred_order
-  )
-
-
-  queue[
-    ,
-    c(
-      intersect(
-        preferred_order,
-        names(queue)
-      ),
-      remaining_columns
-    ),
-    drop = FALSE
-  ]
-}
-
-
 format_queue_for_display <- function(queue) {
 
   if (
@@ -3182,11 +3105,6 @@ server <- function(
             valid_data
           ),
 
-        # The backend currently requires min_risk.
-        # Zero disables business threshold filtering; the Shiny app
-        # creates the priority queue only by descending risk + capacity.
-        min_risk = 0,
-
         top_n = capacity
       )
 
@@ -3217,9 +3135,8 @@ server <- function(
 
 
       queue <-
-        build_priority_queue_from_predictions(
-          predictions,
-          capacity
+        records_to_data_frame(
+          api_result$body$retention_queue
         )
 
 
