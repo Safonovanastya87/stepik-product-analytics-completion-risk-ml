@@ -1,8 +1,10 @@
-# Stepik EdTech Analytics and Completion Risk Prediction System
+# Stepik EdTech Analytics and Learner Non-Completion Risk
 
 ![R](https://img.shields.io/badge/R-4.6.1-blue)
 ![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange)
 ![Machine Learning](https://img.shields.io/badge/ML-XGBoost-green)
+![Shiny](https://img.shields.io/badge/UI-Shiny-blue)
+![Plumber](https://img.shields.io/badge/API-Plumber-lightgrey)
 ![Product Analytics](https://img.shields.io/badge/Product%20Analytics-Retention%20%7C%20Segmentation-purple)
 ![Testing](https://img.shields.io/badge/Testing-testthat-blueviolet)
 ![Status](https://img.shields.io/badge/Status-Portfolio%20Project-purple)
@@ -18,14 +20,17 @@ It combines:
 - learning journey analysis;
 - behavioral segmentation;
 - completion-risk modeling;
-- a reusable prediction pipeline;
-- automated input validation and testing.
+- reusable model inference;
+- a Plumber prediction API;
+- a Shiny decision-support interface;
+- batch prioritization for retention teams;
+- automated validation and testing.
 
 The project analyzes learner behavior in the course **Interactive Data Analysis in R** and addresses the central business question:
 
-> Why do learners fail to complete the course, and how early can at-risk learners be identified?
+> Why do learners fail to complete the course, and how early can at-risk learners be identified and prioritized for retention support?
 
-The project moves beyond retrospective analysis by providing a reusable inference pipeline that can score new learner data and generate a ranked retention queue.
+The final system moves beyond retrospective analysis by turning the trained model into a reusable prediction service for both single learners and batch CSV scoring.
 
 ---
 
@@ -40,9 +45,9 @@ The project investigates:
 - how engagement patterns differ across learners;
 - which learners are most likely to complete the course;
 - how early non-completion risk can be estimated;
-- how retention teams can prioritize limited intervention capacity.
+- how limited retention capacity can be allocated efficiently.
 
-The goal is to move from retrospective completion reporting toward proactive learner-retention analytics.
+The product goal is not to make an automatic intervention decision. Instead, the system provides **decision support** by estimating non-completion probability and ranking learners by risk.
 
 ---
 
@@ -55,22 +60,22 @@ Two public datasets are analyzed:
 - **Event Data** — content views, discoveries, practical starts, and passed assignments;
 - **Submission Data** — practical assignment attempts and submission outcomes.
 
-Together, these datasets allow the reconstruction of learner journeys, engagement patterns, practical activity, and completion trajectories.
+Together, these datasets allow reconstruction of learner journeys, engagement patterns, practical activity, and completion trajectories.
 
 ---
 
 ## Project Workflow
 
-The project consists of four connected layers:
+The project consists of four connected analytical and engineering layers:
 
 ```text
 Product analytics
-        ↓
+      ↓
 Behavioral segmentation
-        ↓
+      ↓
 Completion-risk modeling
-        ↓
-Reusable prediction and retention pipeline
+      ↓
+Reusable prediction API and retention-support application
 ```
 
 ---
@@ -113,7 +118,7 @@ Learners exhibit distinct behavioral patterns, and completion outcomes differ su
 
 ## Part 3 — Completion Risk Modeling
 
-The modeling stage estimates the probability of course completion using behavioral signals observed during the first 10 days of learner activity.
+The modeling stage estimates the probability of course completion using behavioral signals observed during the **first 10 course days**.
 
 Models evaluated:
 
@@ -126,10 +131,10 @@ The final prediction target is:
 P(Completed)
 ```
 
-The operational non-completion risk is calculated as:
+Operational non-completion risk is derived as:
 
 ```text
-Completion Risk = 1 − P(Completed)
+Completion Risk = 1 - P(Completed)
 ```
 
 The final implementation uses an XGBoost model selected based on predictive performance and the practical balance between recall, false-positive rate, and model complexity.
@@ -147,6 +152,43 @@ The modeling workflow includes:
 - engagement-only robustness checks;
 - calibration diagnostics;
 - final holdout evaluation.
+
+### Classification Threshold vs. Intervention Prioritization
+
+The model produces a **continuous completion probability**.
+
+A classification threshold of:
+
+```text
+P(Completed) = 0.116
+```
+
+was selected during validation using the F2 score. This threshold is retained for technical binary classification such as:
+
+```text
+Predicted Completed
+Predicted Not Completed
+```
+
+However, the classification threshold is **not used as a business intervention threshold**.
+
+The retention workflow intentionally separates model classification from operational prioritization:
+
+```text
+Model classification:
+P(Completed) + classification threshold
+            ↓
+Completed / Not Completed
+
+Retention prioritization:
+P(Not Completed)
+      ↓
+sort from highest to lowest risk
+      ↓
+Top N learners according to available intervention capacity
+```
+
+This avoids introducing an arbitrary "high-risk" cutoff into the product workflow.
 
 ---
 
@@ -183,19 +225,21 @@ This allows predictions to be generated without rerunning the training notebook.
 
 ```text
 New learner data
-        ↓
+      ↓
 Input validation
-        ↓
+      ↓
 XGBoost prediction
-        ↓
+      ↓
 Completion probability
-        ↓
-Non-completion risk
-        ↓
-Ranked retention queue
+      ↓
+Non-completion probability
+      ↓
+Capacity-based priority queue
 ```
 
-### Required Prediction Features
+---
+
+## Required Prediction Features
 
 The model expects the following first-10-day learner features:
 
@@ -212,9 +256,29 @@ score_per_active_day
 steps_per_active_day
 ```
 
-### Prediction Output
+Each prediction row also includes:
 
-For every learner, the pipeline returns:
+```text
+user_id
+```
+
+The inference layer validates both data types and cross-field consistency before scoring.
+
+Examples of validation rules include:
+
+- `user_id` must be a positive whole number;
+- `active_days` must be between 1 and 10;
+- `days_since_last_action` must be between 0 and 9;
+- `submission_correct_rate` must be between 0 and 1;
+- passed practical steps cannot exceed started practical steps;
+- practical passes require submissions;
+- submissions require started practical steps.
+
+---
+
+## Prediction Output
+
+For every learner, the model returns continuous probability estimates:
 
 ```text
 completion_probability
@@ -228,36 +292,168 @@ completion_probability = 0.28
 completion_risk        = 0.72
 ```
 
-This represents a 28% estimated probability of course completion and a 72% estimated risk of non-completion.
+This represents a 28% estimated probability of course completion and a 72% estimated probability of non-completion.
+
+Technical prediction output can also include:
+
+```text
+classification_threshold
+predicted_completion_status
+```
+
+These fields support model-level classification and diagnostics but are not used to define intervention priority in the Shiny application.
 
 ---
 
-## Retention Queue
+## Capacity-Based Retention Queue
 
-The prediction output can be converted into a ranked retention queue.
+The retention queue no longer filters learners by a fixed risk threshold.
 
-The queue:
+Instead, it:
 
-1. filters learners above a selected risk threshold;
-2. sorts learners from highest to lowest non-completion risk;
-3. assigns a `risk_rank`;
-4. optionally returns only the highest-priority learners.
+1. scores all valid learners;
+2. sorts learners from highest to lowest `completion_risk`;
+3. assigns `risk_rank`;
+4. returns the first `Top N` learners according to available intervention capacity.
 
-Example output:
+Example:
 
-| user_id | risk_rank | completion_probability | completion_risk |
+| risk_rank | user_id | completion_probability | completion_risk |
 |---:|---:|---:|---:|
-| 1001 | 1 | 0.06 | 0.94 |
-| 1002 | 2 | 0.24 | 0.76 |
-| 1003 | 3 | 0.39 | 0.61 |
+| 1 | 1001 | 0.06 | 0.94 |
+| 2 | 1002 | 0.24 | 0.76 |
+| 3 | 1003 | 0.39 | 0.61 |
 
-This output is designed as decision support for learner-retention teams.
+The system therefore answers the operational question:
+
+> Which N learners should be reviewed first if the retention team can support only N interventions?
+
+It does **not** automatically label a probability as "high risk" or "low risk" without an independently justified business threshold.
+
+---
+
+## Shiny Application
+
+The project includes a Shiny decision-support interface with two workflows.
+
+### Single Learner
+
+The **Single Learner** tab accepts one learner profile and returns:
+
+```text
+Estimated non-completion probability
+```
+
+The interface deliberately displays the continuous probability rather than a categorical high/low-risk label.
+
+### Batch CSV
+
+The **Batch CSV** tab supports:
+
+- CSV upload;
+- preview of the expected 11 input columns;
+- row-level validation;
+- scoring of valid learners;
+- separate reporting of rejected rows;
+- configurable `Learners to prioritize`;
+- capacity-based Top N prioritization;
+- downloadable queue;
+- downloadable full scoring results;
+- downloadable validation errors.
+
+If a CSV contains invalid rows, the application can still score the valid rows and reports rejected rows separately.
+
+Example:
+
+```text
+100 uploaded
+97 scored
+3 rejected
+18 prioritized
+```
+
+The priority queue and rejected-row tables use internal scrolling so large batches do not expand the entire page.
+
+---
+
+## Plumber API
+
+The model is exposed through a Plumber API.
+
+### `GET /health`
+
+Returns model and inference metadata such as:
+
+```text
+status
+model_loaded
+model_class
+required_feature_count
+observation_window_days
+```
+
+### `POST /predict`
+
+Scores exactly one learner.
+
+Conceptual response:
+
+```json
+{
+  "user_id": 1001,
+  "completion_probability": 0.28,
+  "completion_risk": 0.72,
+  "classification_threshold": 0.116,
+  "predicted_completion_status": "..."
+}
+```
+
+### `POST /predict-batch`
+
+Scores multiple learners and builds a capacity-based priority queue.
+
+Request:
+
+```json
+{
+  "learners": [
+    {
+      "user_id": 1001,
+      "n_passed_all": 3,
+      "n_viewed_all": 15,
+      "n_started_practical": 2,
+      "n_passed_practical": 1,
+      "n_submissions": 4,
+      "submission_correct_rate": 0.25,
+      "active_days": 3,
+      "days_since_last_action": 6,
+      "score_per_active_day": 1,
+      "steps_per_active_day": 5
+    }
+  ],
+  "top_n": 1
+}
+```
+
+Conceptual response structure:
+
+```json
+{
+  "learner_count": 1,
+  "queue_count": 1,
+  "top_n": 1,
+  "predictions": [],
+  "retention_queue": []
+}
+```
+
+`min_risk` is intentionally absent from the batch API contract.
 
 ---
 
 ## Production-Style R Components
 
-The reusable inference logic is separated from the exploratory notebooks.
+Reusable inference logic is separated from exploratory notebooks.
 
 ### `R/load_artifact.R`
 
@@ -265,13 +461,7 @@ Loads and validates the saved model artifact and restores the trained XGBoost bo
 
 ### `R/validate_prediction_input.R`
 
-Checks that prediction data:
-
-- is a non-empty data frame;
-- contains every required feature;
-- contains numeric values;
-- contains no missing or infinite values;
-- follows the feature order expected by the model.
+Validates feature structure, ranges, numeric types, and cross-field consistency before inference.
 
 ### `R/predict_completion_risk.R`
 
@@ -280,17 +470,31 @@ Runs the trained model and adds:
 ```text
 completion_probability
 completion_risk
+classification_threshold
+predicted_completion_status
 ```
-
-to the input learner data.
 
 ### `R/build_retention_queue.R`
 
-Filters and ranks learners according to their estimated non-completion risk.
+Sorts scored learners by descending non-completion risk, assigns `risk_rank`, and returns the requested Top N learners.
+
+### `R/batch_scoring.R`
+
+Provides file-based batch scoring:
+
+```text
+CSV
+ ↓
+prediction
+ ↓
+priority queue
+ ↓
+prediction CSV + queue CSV
+```
 
 ---
 
-## Example Usage
+## Example R Usage
 
 ```r
 source("R/load_artifact.R")
@@ -312,41 +516,104 @@ predictions <- predict_completion_risk(
 retention_queue <- build_retention_queue(
   predictions = predictions,
   id_col = "user_id",
-  min_risk = 0.50,
   top_n = 100
 )
 ```
 
 ---
 
+## Demo Batch Data
+
+The repository contains scripts for generating reproducible demonstration data.
+
+```text
+scripts/generate_demo_batch.R
+scripts/generate_demo_batch_with_errors.R
+```
+
+The first script produces a valid batch dataset.
+
+The second produces a controlled error fixture containing invalid rows so the Shiny validation and rejected-row workflow can be demonstrated.
+
+---
+
 ## Automated Testing
 
-The project uses `testthat` to verify the reusable inference components.
+The project uses `testthat` for unit and integration testing.
 
-The current automated tests check that:
+The automated suite covers:
 
-- valid prediction data is accepted;
-- the validated output is a data frame;
-- the expected number of rows is preserved;
-- the model features are returned in the correct order;
-- missing model features are rejected;
-- non-numeric feature values are rejected.
+- prediction input validation;
+- range and cross-field validation;
+- model prediction behavior;
+- retention-queue ranking;
+- Top N capacity behavior;
+- batch scoring;
+- API integration;
+- batch API integration.
 
-Run the tests with:
+The updated tests explicitly verify that the priority queue:
+
+- sorts by descending non-completion risk;
+- assigns sequential `risk_rank`;
+- respects `top_n`;
+- rejects impossible capacity values.
+
+Run the full test suite with:
 
 ```r
 testthat::test_dir(
-  "tests/testthat"
+  "tests/testthat",
+  reporter = "summary"
 )
 ```
 
-Current test result:
+The expected result is a suite with no failed tests.
 
-```text
-FAIL 0 | WARN 0 | SKIP 0 | PASS 5
+---
+
+## Running the Project Locally
+
+The project uses `renv` for reproducible package management.
+
+### Restore dependencies
+
+```r
+install.packages("renv")
+renv::restore()
 ```
 
-Additional tests for model predictions and retention-queue ranking can be added as the inference layer develops further.
+### Start the Plumber API
+
+From the project root:
+
+```powershell
+$Rscript = "D:\R-4.6.1\bin\x64\Rscript.exe"
+
+& $Rscript -e "source('renv/activate.R'); source('scripts/run_api.R')"
+```
+
+The API runs locally on:
+
+```text
+http://127.0.0.1:8001
+```
+
+### Start the Shiny application
+
+In a second terminal:
+
+```powershell
+$Rscript = "D:\R-4.6.1\bin\x64\Rscript.exe"
+
+& $Rscript -e "source('renv/activate.R'); shiny::runApp('shiny', host = '127.0.0.1', port = 3838, launch.browser = TRUE)"
+```
+
+The Shiny application runs locally on:
+
+```text
+http://127.0.0.1:3838
+```
 
 ---
 
@@ -355,7 +622,7 @@ Additional tests for model predictions and retention-queue ranking can be added 
 - The largest learner drop-off occurs before practical engagement begins.
 - Practical activation is one of the strongest indicators of eventual course completion.
 - Learners can be grouped into distinct behavioral segments with different completion outcomes.
-- Behavior during the first 10 days contains meaningful information for early risk prediction.
+- Behavior during the first 10 course days contains meaningful information for early risk prediction.
 - The progress-aware XGBoost approach achieves the strongest overall predictive performance.
 - XGB Baseline is retained as the final operational model because further tuning provides only a marginal PR-AUC improvement while producing a slightly less favorable F2–FPR trade-off.
 - Engagement-only features remain informative after direct progress- and submission-related variables are removed.
@@ -370,7 +637,7 @@ The project demonstrates how educational-platform data can support proactive and
 
 Potential applications include:
 
-- identifying learners with elevated non-completion risk;
+- identifying learners with elevated non-completion probability;
 - ranking learners by intervention priority;
 - improving onboarding and practical activation;
 - targeting re-engagement campaigns;
@@ -378,9 +645,9 @@ Potential applications include:
 - evaluating retention strategies across behavioral segments;
 - allocating limited retention resources more effectively.
 
-The system is intended as a decision-support tool.
+The system is intended as a **decision-support tool**.
 
-It should not be used as a fully automated decision or intervention engine. Predictions should be combined with contextual information, business rules, and human review.
+It should not be used as a fully automated intervention engine. Predictions should be combined with contextual information, business rules, and human review.
 
 ---
 
@@ -404,6 +671,7 @@ It should not be used as a fully automated decision or intervention engine. Pred
 - Hyperparameter Evaluation
 - Class Imbalance Handling
 - PR-AUC Evaluation
+- F2 Threshold Evaluation
 - Feature Importance Analysis
 - Model Robustness Analysis
 - Holdout Validation
@@ -413,16 +681,20 @@ It should not be used as a fully automated decision or intervention engine. Pred
 - Model Serialization
 - Reusable Inference Functions
 - Input Schema Validation
-- Batch-Compatible Prediction
-- Business Rule Integration
-- Retention Queue Generation
-- Automated Testing
+- Plumber REST API
+- Shiny Application
+- Single and Batch Prediction
+- Capacity-Based Prioritization
+- CSV Validation and Error Handling
+- Automated Unit and Integration Testing
 - Reproducible Environments
 
 ### Tools
 
 - R
 - Jupyter Notebook
+- Shiny
+- Plumber
 - data.table
 - dplyr
 - tidyr
@@ -442,11 +714,14 @@ It should not be used as a fully automated decision or intervention engine. Pred
 
 ```text
 stepik-product-analytics-completion-risk-ml/
+├── api/
+│   └── plumber.R
 ├── artifacts/
 │   └── completion_risk_artifact.rds
 ├── data/
 │   ├── raw/
-│   └── processed/
+│   ├── processed/
+│   └── demo_batch_learners.csv
 ├── notebooks/
 │   ├── 01_product_analysis_activation_gap.ipynb
 │   ├── 02_behavioral_segmentation.ipynb
@@ -455,11 +730,26 @@ stepik-product-analytics-completion-risk-ml/
 │   ├── load_artifact.R
 │   ├── validate_prediction_input.R
 │   ├── predict_completion_risk.R
-│   └── build_retention_queue.R
+│   ├── build_retention_queue.R
+│   └── batch_scoring.R
+├── scripts/
+│   ├── run_api.R
+│   ├── generate_demo_batch.R
+│   └── generate_demo_batch_with_errors.R
+├── shiny/
+│   └── app.R
 ├── tests/
 │   └── testthat/
 │       ├── setup.R
+│       ├── test-api-integration.R
+│       ├── test-api-batch-integration.R
+│       ├── test-batch-scoring.R
+│       ├── test-build-retention-queue.R
+│       ├── test-predict-completion-risk.R
 │       └── test-validate-prediction-input.R
+├── .github/
+│   └── workflows/
+│       └── r-tests.yml
 ├── .gitignore
 ├── .Rprofile
 ├── LICENSE
@@ -490,6 +780,8 @@ notebooks/03_completion_risk_modeling.ipynb
 
 The training notebook does not need to be rerun when using the saved model for prediction.
 
+Automated tests are also configured for continuous integration through GitHub Actions.
+
 ---
 
 ## Limitations
@@ -497,6 +789,8 @@ The training notebook does not need to be rerun when using the saved model for p
 - The model is trained on data from one Stepik course.
 - Predictions may not generalize directly to other courses or learning platforms.
 - The features describe early learner behavior but do not capture motivation, external circumstances, or instructional quality.
+- The F2-selected classification threshold is model-specific and should not be interpreted as a universal business intervention threshold.
+- Capacity-based ranking identifies who should be reviewed first but does not determine whether an intervention will be effective.
 - Predicted probabilities should support human decisions rather than replace them.
 - Model performance and calibration should be monitored when the model is applied to new learner populations.
 
@@ -504,10 +798,12 @@ The training notebook does not need to be rerun when using the saved model for p
 
 ## Final Conclusion
 
-This project demonstrates how product analytics, learning analytics, behavioral segmentation, and machine learning can be combined into a reusable learner-retention system.
+This project demonstrates how product analytics, learning analytics, behavioral segmentation, machine learning, API engineering, and application development can be combined into a reusable learner-retention decision-support system.
 
-The analysis identifies the transition from passive content consumption to practical engagement as the most critical point in the learning journey.
+The analysis identifies the transition from passive content consumption to practical engagement as a critical point in the learning journey.
 
-The final XGBoost model uses early behavioral signals to estimate completion probability and non-completion risk. The model is packaged as a reusable artifact and connected to a validated inference pipeline that can score new learner data and generate a ranked retention queue.
+The final XGBoost model uses behavioral signals from the first 10 course days to estimate completion probability and non-completion probability. The model is packaged as a reusable artifact, exposed through a Plumber API, and connected to a Shiny application for single-learner assessment and batch prioritization.
 
-The result is not only an analytical study, but also a foundation for a practical EdTech decision-support product.
+For retention operations, learners are ranked by predicted non-completion probability and selected according to available intervention capacity rather than an arbitrary risk cutoff.
+
+The result is not only an analytical study, but also a working foundation for a practical EdTech ML decision-support product.
