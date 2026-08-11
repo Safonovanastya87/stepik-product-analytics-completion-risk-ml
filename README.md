@@ -346,6 +346,8 @@ Estimated non-completion probability
 
 The interface deliberately displays the continuous probability rather than a categorical high/low-risk label.
 
+![Single Learner prediction](docs/images/shiny_single.png)
+
 ### Batch CSV
 
 The **Batch CSV** tab supports:
@@ -373,6 +375,8 @@ Example:
 ```
 
 The priority queue and rejected-row tables use internal scrolling so large batches do not expand the entire page.
+
+![Batch learner prioritization](docs/images/shiny_batch.png)
 
 ---
 
