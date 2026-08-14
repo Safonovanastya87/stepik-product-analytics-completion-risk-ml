@@ -22,11 +22,15 @@ The final Shiny application supports two workflows.
 
 Enter learner activity manually and estimate the learner's probability of course non-completion.
 
+![Single Learner prediction](docs/images/shiny_single.png)
+
 ### Batch CSV
 
 Upload multiple learners, validate the data, score valid learners and create a **Top N retention priority queue**.
 
 Invalid rows are separated instead of blocking the complete batch.
+
+![Batch learner prioritization](docs/images/shiny_batch.png)
 
 ---
 
