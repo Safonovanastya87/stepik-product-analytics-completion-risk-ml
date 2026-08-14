@@ -1,20 +1,46 @@
 # Stepik EdTech Analytics and Learner Non-Completion Risk
 
-An end-to-end EdTech analytics and machine learning project for identifying learners with elevated course non-completion risk during the **first 10 course days**.
+![R](https://img.shields.io/badge/R-4.6.1-blue)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange)
+![Machine Learning](https://img.shields.io/badge/ML-XGBoost-green)
+![Shiny](https://img.shields.io/badge/UI-Shiny-blue)
+![Plumber](https://img.shields.io/badge/API-Plumber-lightgrey)
+![Testing](https://img.shields.io/badge/Testing-testthat-blueviolet)
+![Status](https://img.shields.io/badge/Status-Portfolio%20Project-purple)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-The project combines:
+## Overview
 
-- product and learner behavior analysis;
-- behavioral segmentation;
-- XGBoost completion-risk modeling;
+An end-to-end EdTech analytics and machine learning project based on learner activity data from the online learning platform **Stepik**.
+
+The project investigates:
+
+- where learners disengage during the course journey;
+- how learner behavior differs across user groups;
+- whether non-completion risk can be identified during the **first 10 course days**;
+- how learners with the highest predicted risk can be prioritized when retention capacity is limited.
+
+The final solution combines:
+
+- product and behavioral analysis;
+- K-Means learner segmentation;
+- Random Forest and XGBoost modeling;
 - reusable model inference;
+- input validation;
 - Plumber REST API;
 - Shiny application;
-- single-learner and batch prediction;
-- capacity-based retention prioritization;
-- automated validation and testing.
+- single and batch prediction;
+- capacity-based learner prioritization;
+- automated unit and integration testing.
 
-## Application
+The analyzed course is **Interactive Data Analysis in R**.
+
+> **Main business question:**  
+> Why do learners fail to complete the course, and how early can learners with elevated non-completion risk be identified and prioritized for retention support?
+
+---
+
+# Application
 
 The final Shiny application supports two workflows.
 
@@ -26,239 +52,57 @@ Enter learner activity manually and estimate the learner's probability of course
 
 ### Batch CSV
 
-Upload multiple learners, validate the data, score valid learners and create a **Top N retention priority queue**.
+Upload multiple learners, validate the input, score valid rows and create a **Top N retention priority queue**.
 
-Invalid rows are separated instead of blocking the complete batch.
+Invalid rows are separated instead of blocking the entire batch.
 
 ![Batch learner prioritization](docs/images/shiny_batch.png)
+
 
 ---
 
 # Quick Start
 
-The project consists of two running application components:
+The instructions below assume **Windows + VS Code**.
 
-```text
-PowerShell Terminal 1
-└── Plumber API
-    └── http://127.0.0.1:8001
+## Requirements
 
-PowerShell Terminal 2
-└── Shiny application
-    └── http://127.0.0.1:3838
-```
+- Git
+- R **4.6.1**
+- VS Code or another IDE/terminal
+- Internet connection for the initial dependency restore
 
-Before starting them for the first time, restore the R package environment using an **R Console**.
+**Windows:** `Rtools45` may be required if `renv::restore()` needs to build one or more R packages from source. It is not required when compatible package binaries are available.
 
-The instructions below are written for **Windows + VS Code**.
+## 1. Clone the repository
 
----
-
-## 1. Clone the Repository
-
-### Where to run this
-
-Open **VS Code**.
-
-Then open:
-
-```text
-Terminal
-→ New Terminal
-```
-
-Make sure the terminal is **PowerShell**.
-
-The PowerShell prompt normally starts with:
-
-```text
-PS C:\...
-```
-
-Run:
+**VS Code Terminal / PowerShell**
 
 ```powershell
 git clone https://github.com/Safonovanastya87/stepik-product-analytics-completion-risk-ml.git
-```
-
-Then move into the project folder:
-
-```powershell
 cd stepik-product-analytics-completion-risk-ml
 ```
 
-Check that you are in the correct directory:
+Open the cloned folder in VS Code if it is not already open.
 
-```powershell
-Get-Location
-```
+## 2. Restore the R environment
 
-The path should end with:
-
-```text
-stepik-product-analytics-completion-risk-ml
-```
-
-You can also check that the project lockfile exists:
-
-```powershell
-Test-Path .\renv.lock
-```
-
-Expected result:
-
-```text
-True
-```
-
----
-
-## 2. Restore the R Environment
-
-### Important
-
-The commands in this step are **R commands**.
-
-Do **not** enter them directly into PowerShell.
-
-Open an **R Console** from the project directory.
-
-The R prompt looks like:
-
-```text
->
-```
-
-First verify the current working directory:
-
-```r
-getwd()
-```
-
-It should point to:
-
-```text
-.../stepik-product-analytics-completion-risk-ml
-```
-
-Check that R can see the lockfile:
-
-```r
-file.exists("renv.lock")
-```
-
-Expected result:
-
-```text
-TRUE
-```
-
-The project uses `renv` for reproducible dependency management.
-
-If `renv` is not installed on the computer, run in the **R Console**:
+**R Console**
 
 ```r
 install.packages("renv")
-```
-
-Then restore the project environment:
-
-```r
 renv::restore()
 ```
 
-Wait until the restore process has completed.
+The project uses `renv.lock` to restore the package versions used by the project.
 
-The project was developed with **R 4.6.1**.
+## 3. Start the API
 
-After restoration, check the environment:
-
-```r
-renv::status()
-```
-
-You can also verify that the main model package is available:
-
-```r
-packageVersion("xgboost")
-```
-
-If a version number is returned, `xgboost` is available in the active project environment.
-
-At this point the initial dependency setup is complete.
-
----
-
-## 3. Start the Plumber API
-
-The API must remain running while the Shiny application is used.
-
-### Where to run this
-
-Return to **VS Code**.
-
-Open:
-
-```text
-Terminal
-→ New Terminal
-```
-
-This is:
-
-```text
-PowerShell Terminal 1
-```
-
-Make sure it starts with:
-
-```text
-PS ...
-```
-
-and make sure it is in the project root:
-
-```powershell
-Get-Location
-```
-
-If necessary, navigate to the project:
-
-```powershell
-cd "C:\path\to\stepik-product-analytics-completion-risk-ml"
-```
-
-### Check whether `Rscript` is available
-
-Run in **PowerShell Terminal 1**:
-
-```powershell
-Rscript --version
-```
-
-If this displays the R version, start the API with:
+**VS Code Terminal / PowerShell**
 
 ```powershell
 Rscript -e "source('renv/activate.R'); source('scripts/run_api.R')"
 ```
-
-### If PowerShell says that `Rscript` is not recognized
-
-Specify the full path to `Rscript.exe`.
-
-For example:
-
-```powershell
-$Rscript = "D:\R-4.6.1\bin\x64\Rscript.exe"
-```
-
-Then start the API:
-
-```powershell
-& $Rscript -e "source('renv/activate.R'); source('scripts/run_api.R')"
-```
-
-The exact path to R may be different on another computer.
 
 The API runs at:
 
@@ -266,343 +110,313 @@ The API runs at:
 http://127.0.0.1:8001
 ```
 
-Health endpoint:
+Health check:
 
 ```text
 http://127.0.0.1:8001/health
 ```
 
-Open this address in a **web browser** to verify that the API is running.
+Keep this terminal running.
 
-### Important
+## 4. Start the Shiny application
 
-Leave **PowerShell Terminal 1 open**.
-
-Do not stop the API before starting Shiny.
-
----
-
-## 4. Start the Shiny Application
-
-The API from the previous step must still be running.
-
-### Where to run this
-
-In VS Code open another terminal:
-
-```text
-Terminal
-→ New Terminal
-```
-
-This is:
-
-```text
-PowerShell Terminal 2
-```
-
-You should now have:
-
-```text
-Terminal 1 → Plumber API
-Terminal 2 → Shiny
-```
-
-Check that Terminal 2 is also in the project root:
-
-```powershell
-Get-Location
-```
-
-If necessary:
-
-```powershell
-cd "C:\path\to\stepik-product-analytics-completion-risk-ml"
-```
-
-### If `Rscript` is available through PATH
-
-Run in **PowerShell Terminal 2**:
+Open a **second VS Code terminal**:
 
 ```powershell
 Rscript -e "source('renv/activate.R'); shiny::runApp('shiny', host = '127.0.0.1', port = 3838, launch.browser = TRUE)"
 ```
 
-### If an explicit R path is required
-
-Define it again in **Terminal 2**:
-
-```powershell
-$Rscript = "D:\R-4.6.1\bin\x64\Rscript.exe"
-```
-
-Then run:
-
-```powershell
-& $Rscript -e "source('renv/activate.R'); shiny::runApp('shiny', host = '127.0.0.1', port = 3838, launch.browser = TRUE)"
-```
-
-The application should open automatically in the default browser.
-
-If it does not, open:
+The application runs at:
 
 ```text
 http://127.0.0.1:3838
 ```
 
-### Keep both terminals running
-
-While using the application, the setup should look like this:
-
-```text
-PowerShell Terminal 1
-└── Plumber API
-    └── http://127.0.0.1:8001
-
-PowerShell Terminal 2
-└── Shiny
-    └── http://127.0.0.1:3838
-
-Browser
-└── Shiny user interface
-```
-
-The application runtime flow is:
-
-```text
-Browser
-   ↓
-Shiny application
-   ↓
-Plumber REST API
-   ↓
-Reusable inference
-   ↓
-XGBoost model
-```
-
 ---
 
-## 5. Stop the Application
+# Demo Batch Data
 
-When finished, stop the two processes separately.
-
-In **PowerShell Terminal 2**, where Shiny is running:
-
-```text
-Ctrl + C
-```
-
-Then in **PowerShell Terminal 1**, where the API is running:
-
-```text
-Ctrl + C
-```
-
----
-
-## Command Location Summary
-
-| Command / Task | Where to run it |
-|---|---|
-| `git clone ...` | PowerShell |
-| `cd ...` | PowerShell |
-| `Get-Location` | PowerShell |
-| `Rscript --version` | PowerShell |
-| `$Rscript = "..."` | PowerShell |
-| `install.packages("renv")` | R Console |
-| `renv::restore()` | R Console |
-| `renv::status()` | R Console |
-| `packageVersion("xgboost")` | R Console |
-| Start Plumber API | PowerShell Terminal 1 |
-| Start Shiny | PowerShell Terminal 2 |
-| Open `/health` | Web browser |
-| Use the Shiny application | Web browser |
-
----
-
-# How to Try It
-
-## Single Learner
-
-After both the API and Shiny application are running:
-
-1. open `http://127.0.0.1:3838` in the browser;
-2. open the **Single Learner** tab;
-3. enter learner activity for the first 10 course days;
-4. click **Predict completion risk**;
-5. review the estimated non-completion probability.
-
-No dataset is required for this workflow.
-
----
-
-## Batch CSV
-
-To quickly test batch scoring, a demo dataset can be generated.
-
-### Where to run this
-
-Open a **new PowerShell terminal** in the project root.
-
-If `Rscript` is available through PATH:
-
-```powershell
-Rscript -e "source('renv/activate.R'); source('scripts/generate_demo_batch.R')"
-```
-
-If an explicit path to R is required:
-
-```powershell
-$Rscript = "D:\R-4.6.1\bin\x64\Rscript.exe"
-```
-
-then:
-
-```powershell
-& $Rscript -e "source('renv/activate.R'); source('scripts/generate_demo_batch.R')"
-```
-
-This creates:
+Two ready-to-use CSV files are included in the repository:
 
 ```text
 data/demo_batch_learners.csv
+data/demo_batch_learners_with_errors.csv
 ```
 
-Then:
+### `demo_batch_learners.csv`
 
-1. open the Shiny application;
+Valid learner data for testing the normal batch-scoring workflow.
+
+### `demo_batch_learners_with_errors.csv`
+
+Contains controlled invalid rows for testing:
+
+- row-level validation;
+- scoring of valid rows when other rows are invalid;
+- the **Rejected rows** view;
+- validation-error downloads.
+
+To test batch prediction:
+
+1. start the API and Shiny application;
 2. open **Batch CSV**;
-3. upload `data/demo_batch_learners.csv`;
-4. choose how many learners can be prioritized;
-5. run the prediction;
-6. review the ranked retention queue.
+3. upload one of the demo files;
+4. choose **Learners to prioritize**;
+5. run the prediction.
 
-A second demo file containing intentionally invalid rows can be generated from **PowerShell** with:
+The application returns:
 
-```powershell
-Rscript -e "source('renv/activate.R'); source('scripts/generate_demo_batch_with_errors.R')"
-```
-
-or, when using an explicit R path:
-
-```powershell
-& $Rscript -e "source('renv/activate.R'); source('scripts/generate_demo_batch_with_errors.R')"
-```
-
-This demonstrates row-level validation and rejected-row handling.
+- successfully scored learners;
+- rejected rows, when present;
+- a ranked Top N intervention queue;
+- downloadable prediction and validation results.
 
 ---
 
-# How It Works
+# CSV Input
+
+Each row represents one learner observed during the **first 10 course days**.
+
+Required fields:
+
+| Column | Description |
+|---|---|
+| `user_id` | Learner identifier |
+| `n_passed_all` | Total passed course steps |
+| `n_viewed_all` | Total viewed steps |
+| `n_started_practical` | Practical steps started |
+| `n_passed_practical` | Practical steps passed |
+| `n_submissions` | Number of submissions |
+| `submission_correct_rate` | Share of correct submissions |
+| `active_days` | Active days in the observation window |
+| `days_since_last_action` | Days since the last learner action |
+| `score_per_active_day` | Score intensity per active day |
+| `steps_per_active_day` | Step activity per active day |
+
+Input ranges and cross-field consistency are validated before prediction.
+
+The authoritative validation implementation is:
 
 ```text
-Learner activity — first 10 days
-              ↓
-       Input validation
-              ↓
-         XGBoost model
-              ↓
- Non-completion probability
-              ↓
-      Rank learners by risk
-              ↓
- Top N according to retention capacity
+R/validate_prediction_input.R
 ```
-
-The system provides **decision support** rather than automatically deciding which learners should receive an intervention.
 
 ---
 
 # Project Workflow
 
 ```text
-Product Analytics
-       ↓
-Behavioral Segmentation
-       ↓
-Completion-Risk Modeling
-       ↓
-Reusable Model Inference
-       ↓
+Product analytics
+        ↓
+Behavioral segmentation
+        ↓
+Completion-risk modeling
+        ↓
+Reusable inference
+        ↓
 Plumber REST API
-       ↓
-Shiny Application
-       ↓
-Retention Prioritization
+        ↓
+Shiny application
+        ↓
+Capacity-based retention prioritization
 ```
-
-## Key Findings
-
-- The largest learner drop-off occurs before meaningful practical engagement.
-- Practical activation is strongly associated with eventual course completion.
-- Learners show distinct behavioral engagement patterns.
-- Activity during the first 10 course days contains useful information for early risk estimation.
-- XGBoost provides the final operational prediction model.
-- Retention priority is based on ranking predicted non-completion probability rather than an arbitrary business risk threshold.
 
 ---
 
-# Architecture
+# 1. Product Analytics
+
+The first stage analyzes learner behavior throughout the course using:
+
+- funnel analysis;
+- learning journey reconstruction;
+- step-level engagement;
+- practical-assignment behavior;
+- learner-level activity profiles.
+
+### Key Finding
+
+The largest learner drop-off occurs before meaningful practical engagement.
+
+Many learners consume course content but do not transition into active practical work. This transition is treated as an **Activation Gap**.
+
+---
+
+# 2. Behavioral Segmentation
+
+K-Means clustering is used to identify learner groups with different engagement patterns.
+
+| Segment | Description |
+|---|---|
+| Passive Users | Low engagement and minimal practical activity |
+| Steady Learners | Consistent participation and moderate progress |
+| Burst Learners | High-intensity engagement and strong productivity |
+
+The segments show clearly different course-completion behavior.
+
+---
+
+# 3. Completion Risk Modeling
+
+The model uses learner behavior from the **first 10 course days**.
+
+Models evaluated:
+
+- Random Forest;
+- XGBoost.
+
+The final operational model uses **XGBoost**.
+
+The model estimates:
 
 ```text
-stepik-product-analytics-completion-risk-ml/
-├── api/          # Plumber REST API
-├── artifacts/    # Serialized trained model
-├── data/         # Demo and processed data
-├── notebooks/    # Analytics and model development
-├── R/            # Reusable inference and validation functions
-├── scripts/      # API and demo-data utilities
-├── shiny/        # Shiny application
-├── tests/        # Automated tests
-└── docs/         # Detailed documentation and images
+P(Completed)
 ```
+
+and derives:
+
+```text
+Non-completion risk = 1 - P(Completed)
+```
+
+Model development includes:
+
+- feature engineering;
+- class-imbalance handling;
+- PR-AUC model comparison;
+- F2 and false-positive-rate analysis;
+- feature importance;
+- robustness checks;
+- calibration diagnostics;
+- holdout validation.
 
 ---
 
-# Testing
+# Classification vs. Retention Prioritization
 
-The project includes automated tests for:
+The model produces a continuous probability.
 
-- input validation;
+A classification threshold selected during model evaluation is used for technical model classification, but **not as a business intervention threshold**.
+
+Retention prioritization instead follows:
+
+```text
+predicted non-completion probability
+                ↓
+        sort descending
+                ↓
+             Top N
+                ↓
+     retention priority queue
+```
+
+This answers the operational question:
+
+> Which N learners should be reviewed first if the retention team can support only N interventions?
+
+---
+
+# Model Artifact
+
+The trained model is stored in:
+
+```text
+artifacts/completion_risk_artifact.rds
+```
+
+It contains the serialized XGBoost model together with the information required for inference.
+
+Because the trained artifact is included in the project, the modeling notebook does **not** need to be rerun to test the API or Shiny application.
+
+---
+
+# REST API
+
+The model is exposed through a local **Plumber REST API**.
+
+Implementation:
+
+```text
+api/plumber.R
+```
+
+Main endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Verify that the API and model are available |
+| `POST /predict` | Score one learner |
+| `POST /predict-batch` | Score multiple learners and build a Top N queue |
+
+The API performs strict input validation.
+
+For CSV uploads, the Shiny application adds row-level preprocessing so valid learners can still be scored when other rows contain validation errors.
+
+---
+
+# Main R Components
+
+```text
+R/load_artifact.R
+```
+
+Loads and validates the saved model artifact.
+
+```text
+R/validate_prediction_input.R
+```
+
+Validates feature structure, types, ranges and cross-field consistency.
+
+```text
+R/predict_completion_risk.R
+```
+
+Runs model inference and calculates completion and non-completion probabilities.
+
+```text
+R/build_retention_queue.R
+```
+
+Ranks learners by descending predicted non-completion risk and selects Top N.
+
+```text
+R/batch_scoring.R
+```
+
+Provides reusable batch-scoring functionality.
+
+---
+
+# Automated Testing
+
+The project uses `testthat` for unit and integration testing.
+
+The test suite covers:
+
+- prediction-input validation;
+- range and cross-field validation;
 - model inference;
-- retention queue ranking;
+- retention-queue ranking;
+- Top N behavior;
 - batch scoring;
-- API integration.
+- API integration;
+- batch API integration.
 
-## Run the complete test suite
+Run all tests from the project root:
 
-### Where to run this
-
-Open a **PowerShell terminal** in the project root.
-
-If `Rscript` is available through PATH:
+**VS Code Terminal / PowerShell**
 
 ```powershell
 Rscript -e "source('renv/activate.R'); testthat::test_dir('tests/testthat', reporter='summary')"
 ```
 
-If `Rscript` is not available through PATH:
-
-```powershell
-$Rscript = "D:\R-4.6.1\bin\x64\Rscript.exe"
-```
-
-then:
-
-```powershell
-& $Rscript -e "source('renv/activate.R'); testthat::test_dir('tests/testthat', reporter='summary')"
-```
-
-The test suite should complete without failed tests.
-
 Tests are also executed through GitHub Actions.
 
 ---
 
-# Jupyter Notebooks
+# Reproducing the Analysis and Model
 
-The analytical notebooks are located in:
+The analytical workflow is implemented in three Jupyter notebooks:
 
 ```text
 notebooks/
@@ -611,62 +425,140 @@ notebooks/
 └── 03_completion_risk_modeling.ipynb
 ```
 
-Open these files directly in **VS Code or Jupyter** and select an **R kernel**.
+Open the notebooks in **VS Code or Jupyter** using an **R kernel** and run them in numerical order.
 
-R code such as:
+Training datasets are intentionally **not stored in Git**.
 
-```r
-library(data.table)
-library(dplyr)
-library(xgboost)
-```
-
-must be executed inside:
+The notebooks automatically obtain the required source data and create local:
 
 ```text
-Jupyter R notebook cell
+data/raw/
+data/processed/
 ```
 
-or:
+when needed.
 
-```text
-R Console
-```
+These directories contain generated/downloaded data and are excluded from version control.
 
-and not directly in PowerShell.
-
-If a notebook on a newly cloned computer reports that a package such as `xgboost` is missing, return to an **R Console** in the project root and run:
-
-```r
-renv::status()
-renv::restore()
-```
-
-Then restart the Jupyter R kernel.
+The demo CSV files used to test the final application are different: they are stored directly in the repository so batch prediction can be tested immediately after cloning.
 
 ---
 
-# Documentation
+# Project Structure
 
-More detailed analytical and technical documentation is available here:
+```text
+stepik-product-analytics-completion-risk-ml/
+├── .github/
+│   └── workflows/
+├── api/
+│   └── plumber.R
+├── artifacts/
+│   └── completion_risk_artifact.rds
+├── data/
+│   ├── demo_batch_learners.csv
+│   └── demo_batch_learners_with_errors.csv
+├── notebooks/
+│   ├── 01_product_analysis_activation_gap.ipynb
+│   ├── 02_behavioral_segmentation.ipynb
+│   └── 03_completion_risk_modeling.ipynb
+├── R/
+│   ├── load_artifact.R
+│   ├── validate_prediction_input.R
+│   ├── predict_completion_risk.R
+│   ├── build_retention_queue.R
+│   └── batch_scoring.R
+├── scripts/
+│   └── run_api.R
+├── shiny/
+│   └── app.R
+├── tests/
+│   └── testthat/
+├── .gitignore
+├── .Rprofile
+├── LICENSE
+├── README.md
+└── renv.lock
+```
 
-- [Full Project Documentation](docs/PROJECT_DOCUMENTATION.md)
-- [Modeling Notebook](notebooks/03_completion_risk_modeling.ipynb)
-- [Product Analysis](notebooks/01_product_analysis_activation_gap.ipynb)
-- [Behavioral Segmentation](notebooks/02_behavioral_segmentation.ipynb)
+`data/raw/`, `data/processed/`, generated models and generated results are created locally when required and are not version-controlled.
 
-The full project documentation contains detailed information about the analytical methodology, model development, validation, API design, inference pipeline, application behavior, and project implementation.
+---
+
+# Reproducibility
+
+The repository contains:
+
+- source code;
+- analytical notebooks;
+- `renv.lock`;
+- the trained model artifact;
+- automated tests;
+- CI configuration;
+- ready-to-use batch demo data.
+
+`renv` restores the R package environment defined by the project lockfile.
+
+For normal application testing, a new user should only need to:
+
+```text
+clone repository
+      ↓
+restore renv environment
+      ↓
+start API
+      ↓
+start Shiny
+      ↓
+test Single Learner or Batch CSV
+```
+
+### Windows dependency note
+
+If `renv::restore()` reports that packages need to be built from source, install **Rtools45** and run `renv::restore()` again.
+
+### If `Rscript` is not recognized
+
+Use the full path to the `Rscript.exe` installed with R instead of the `Rscript` command.
+
+---
+
+# Key Findings
+
+- The largest learner drop-off occurs before practical engagement.
+- Practical activation is strongly associated with course completion.
+- Learners form distinct behavioral groups with different completion outcomes.
+- Behavior during the first 10 course days contains useful information for early risk prediction.
+- XGBoost provides the strongest overall predictive performance for the final workflow.
+- The trained model can be reused independently of the modeling notebook.
+- Continuous risk probabilities can be translated into a capacity-aware retention queue without introducing an unsupported fixed business threshold.
 
 ---
 
 # Tech Stack
 
-**R · XGBoost · Random Forest · K-Means · Shiny · Plumber · testthat · renv · GitHub Actions**
+**Analytics & ML**
+
+R, data.table, dplyr, tidyr, ggplot2, caret, randomForest, xgboost, pROC
+
+**Application & Engineering**
+
+Shiny, Plumber, testthat, renv, Git, GitHub Actions, Jupyter
 
 ---
 
-## Limitations
+# Limitations
 
-The model was developed using data from one Stepik course and should not be assumed to generalize directly to other courses or learning platforms.
+- The model is trained on data from one Stepik course.
+- Results may not generalize directly to other courses or learning platforms.
+- Behavioral features cannot capture factors such as learner motivation or external circumstances.
+- The model classification threshold should not be interpreted as a universal intervention threshold.
+- Capacity-based ranking identifies who should be reviewed first but does not prove that an intervention will be effective.
+- Predictions are intended to support human decisions rather than replace them.
 
-Predictions are intended to support human decision-making rather than replace it.
+---
+
+# Conclusion
+
+This project demonstrates an end-to-end workflow from **product analytics and learner behavior analysis to a deployable machine learning decision-support application**.
+
+The final system uses early learner behavior to estimate non-completion risk, exposes the trained model through a REST API, supports individual and batch prediction, validates incoming data and converts model probabilities into a capacity-based retention priority queue.
