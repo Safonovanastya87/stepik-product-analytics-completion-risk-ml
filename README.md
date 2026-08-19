@@ -15,85 +15,93 @@ The resulting risk score can be used to prioritize learners for early retention 
 The project covers the full data science lifecycle:
 
 1. **Exploratory and product analytics**
-
-   * learner activity analysis;
-   * activation-gap analysis;
-   * behavioral patterns related to course completion.
+   - learner activity analysis;
+   - activation-gap analysis;
+   - behavioral patterns related to course completion.
 
 2. **Learner segmentation**
-
-   * feature engineering from LMS events;
-   * K-Means clustering;
-   * interpretation of learner behavior profiles.
+   - feature engineering from LMS events;
+   - K-Means clustering;
+   - interpretation of learner behavior profiles.
 
 3. **Completion risk modeling**
-
-   * Random Forest;
-   * XGBoost;
-   * cross-validation and model tuning;
-   * evaluation with **PR-AUC** and **F2-score**.
+   - Random Forest;
+   - XGBoost;
+   - cross-validation and model tuning;
+   - evaluation with **PR-AUC** and **F2-score**.
 
 4. **Production inference**
-
-   * reproducible model artifact;
-   * single-learner prediction;
-   * batch prediction;
-   * validation and separation of invalid input rows.
+   - reproducible model artifact;
+   - single-learner prediction;
+   - batch prediction;
+   - validation and separation of invalid input rows.
 
 5. **Retention prioritization**
-
-   * ranking learners by predicted non-completion risk;
-   * Top-N prioritization;
-   * capacity-based retention queue.
+   - ranking learners by predicted non-completion risk;
+   - Top-N prioritization;
+   - capacity-based retention queue.
 
 6. **Deployment and quality assurance**
-
-   * REST API with Plumber;
-   * interactive Shiny application;
-   * unit and integration tests;
-   * GitHub Actions CI.
+   - REST API with Plumber;
+   - interactive Shiny application;
+   - unit and integration tests;
+   - GitHub Actions CI.
 
 ## Tech Stack
 
 **Language**
 
-* R
+- R
 
 **Data & Analytics**
 
-* data.table
-* dplyr
-* tidyr
-* lubridate
-* ggplot2
-* corrplot
-* cluster
-* mclust
-* fpc
+- data.table
+- dplyr
+- tidyr
+- lubridate
+- ggplot2
+- corrplot
+- cluster
+- mclust
+- fpc
 
 **Machine Learning**
 
-* caret
-* randomForest
-* xgboost
-* pROC
-* PRROC
+- caret
+- randomForest
+- xgboost
+- pROC
+- PRROC
 
 **Deployment**
 
-* plumber
-* Shiny
+- plumber
+- Shiny
 
 **Reproducibility & Testing**
 
-* renv
-* testthat
-* GitHub Actions
+- renv
+- testthat
+- GitHub Actions
 
 ## Repository Structure
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── r-tests.yml
+│
+├── R/
+│   ├── batch_scoring.R
+│   ├── build_retention_queue.R
+│   ├── load_artifact.R
+│   ├── predict_completion_risk.R
+│   └── validate_prediction_input.R
+│
+├── api/
+│   └── plumber.R
+│
 ├── artifacts/
 │   └── completion_risk_artifact.rds
 │
@@ -101,19 +109,51 @@ The project covers the full data science lifecycle:
 │   ├── demo_batch_learners.csv
 │   └── demo_batch_learners_with_errors.csv
 │
-├── scripts/
-│   ├── run_api.R
-│   └── run_shiny.R
+├── docs/
+│   ├── images/
+│   │   ├── .gitkeep
+│   │   ├── shiny_batch.png
+│   │   └── shiny_single.png
+│   └── PROJECT_DOCUMENTATION.md
 │
-├── tests/
+├── notebooks/
+│   ├── 01_product_analysis_activation_gap.ipynb
+│   ├── 02_behavioral_segmentation.ipynb
+│   └── 03_completion_risk_modeling.ipynb
+│
+├── outputs/
+│   ├── completion_risk_predictions.csv
+│   └── retention_queue.csv
 │
 ├── renv/
-├── renv.lock
-├── .github/
-│   └── workflows/
+│   ├── .gitignore
+│   ├── activate.R
+│   └── settings.json
 │
+├── scripts/
+│   ├── generate_demo_batch.R
+│   ├── generate_demo_batch_with_errors.R
+│   ├── run_api.R
+│   └── run_batch_scoring.R
+│
+├── shiny/
+│   └── app.R
+│
+├── tests/
+│   └── testthat/
+│       ├── setup.R
+│       ├── test-api-batch-integration.R
+│       ├── test-api-integration.R
+│       ├── test-batch-scoring.R
+│       ├── test-build-retention-queue.R
+│       ├── test-predict-completion-risk.R
+│       └── test-validate-prediction-input.R
+│
+├── .Rprofile
+├── .gitignore
+├── LICENSE
 ├── README.md
-└── PROJECT_DOCUMENTATION.md
+└── renv.lock
 ```
 
 The repository contains small demo datasets for testing the batch prediction workflow. Larger source datasets and generated outputs are not tracked in Git.
@@ -122,6 +162,8 @@ The repository contains small demo datasets for testing the batch prediction wor
 
 ### 1. Clone the repository
 
+**PowerShell / Terminal:**
+
 ```bash
 git clone https://github.com/Safonovanastya87/stepik-product-analytics-completion-risk-ml.git
 cd stepik-product-analytics-completion-risk-ml
@@ -129,13 +171,15 @@ cd stepik-product-analytics-completion-risk-ml
 
 ### 2. Install R
 
-The project was developed with **R 4.6.0**.
+The project was developed with **R 4.6.x**.
 
 Using the same R version is recommended for maximum reproducibility.
 
 ### 3. Install `renv`
 
 If `renv` is not installed yet:
+
+**R console:**
 
 ```r
 install.packages("renv")
@@ -144,6 +188,8 @@ install.packages("renv")
 ### 4. Restore the project environment
 
 From the project root:
+
+**R console:**
 
 ```r
 renv::restore()
@@ -157,6 +203,8 @@ Some R packages may need to be compiled from source if a compatible binary is un
 
 In that case, install the appropriate **Rtools** version for your R installation and run:
 
+**R console:**
+
 ```r
 renv::restore()
 ```
@@ -169,26 +217,35 @@ Rtools is not required when all required packages can be installed as binaries.
 
 From the project root:
 
-```bash
-Rscript -e "source('renv/activate.R'); source('scripts/run_api.R')"
+**R console:**
+
+```r
+source("renv/activate.R")
+source("scripts/run_api.R")
 ```
 
 The API loads the saved model artifact and exposes the completion-risk prediction endpoint through Plumber.
 
 ## Run the Shiny Application
 
-```bash
-Rscript -e "source('renv/activate.R'); source('scripts/run_shiny.R')"
+Open a second R console while the API remains running.
+
+**R console:**
+
+```r
+source("renv/activate.R")
+shiny::runApp("shiny", launch.browser = TRUE)
 ```
 
 The application supports:
 
-* **Single Learner** prediction;
-* **Batch CSV** prediction;
-* input validation;
-* separation of invalid records;
-* learner risk ranking;
-* capacity-based retention prioritization.
+- **Single Learner** prediction;
+- **Batch CSV** prediction;
+- input validation;
+- separation of invalid records;
+- completion and non-completion probability output;
+- learner risk ranking;
+- capacity-based retention prioritization.
 
 ## Demo Batch Files
 
@@ -217,17 +274,19 @@ The artifact contains the components required to reproduce prediction behavior w
 
 Run the automated test suite from the project root:
 
+**R console:**
+
 ```r
-testthat::test_dir("tests")
+testthat::test_dir("tests/testthat")
 ```
 
 The tests cover key inference behavior, including:
 
-* prediction output structure;
-* valid probability ranges;
-* required feature validation;
-* single and batch prediction behavior;
-* API-related integration checks.
+- prediction output structure;
+- valid probability ranges;
+- required feature validation;
+- single and batch prediction behavior;
+- API-related integration checks.
 
 The test suite is also executed automatically through **GitHub Actions**.
 
@@ -237,15 +296,17 @@ The repository uses `renv` to keep the R package environment reproducible.
 
 A clean setup should therefore require only:
 
+**R console:**
+
 ```r
 install.packages("renv")
 renv::restore()
 ```
 
-followed by either the API or Shiny startup command.
+followed by the API and Shiny startup commands.
 
 ## Documentation
 
 For the detailed analytical workflow, modeling decisions, feature engineering, validation logic, and deployment design, see:
 
-[`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md)
+[`docs/PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md)
