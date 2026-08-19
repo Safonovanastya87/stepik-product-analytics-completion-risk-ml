@@ -1,5 +1,7 @@
 library(shiny)
 library(httr2)
+library(readxl)
+library(writexl)
 
 
 # ============================================================
@@ -419,7 +421,7 @@ validate_batch_rows <- function(data) {
     return(
       list(
         success = FALSE,
-        error = "The uploaded CSV contains no learners."
+        error = "The uploaded XLSX contains no learners."
       )
     )
   }
@@ -2095,11 +2097,11 @@ ui <- fluidPage(
 
 
       # ========================================================
-      # BATCH CSV
+      # BATCH XLSX
       # ========================================================
 
       tabPanel(
-        "Batch CSV",
+        "Batch XLSX",
         value = "batch",
 
 
@@ -2611,7 +2613,7 @@ server <- function(
 
   batch_result <- reactiveVal(NULL)
 
-  # Keep uploaded CSV data in explicit application state.
+  # Keep uploaded XLSX data in explicit application state.
   # We intentionally do not use input$batch_file as the source
   # of truth after upload because a dynamically rebuilt fileInput
   # can leave the previous server-side input value available.
@@ -2682,11 +2684,10 @@ server <- function(
 
     fileInput(
       "batch_file",
-      "Learner CSV",
+      "Learner XLSX",
       accept = c(
-        ".csv",
-        "text/csv",
-        "text/comma-separated-values"
+        ".xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       ),
       width = "100%"
     )
@@ -2710,7 +2711,7 @@ server <- function(
 
 
   # ==========================================================
-  # Reset Batch CSV whenever the user returns to the tab
+  # Reset Batch XLSX whenever the user returns to the tab
   # ==========================================================
 
   observeEvent(
@@ -2774,10 +2775,14 @@ server <- function(
 
       tryCatch(
         {
-          data <- read.csv(
-            uploaded_file$datapath,
-            stringsAsFactors = FALSE,
-            check.names = FALSE
+          data <- readxl::read_excel(
+            uploaded_file$datapath
+          )
+
+          data <- as.data.frame(
+            data,
+            check.names = FALSE,
+            stringsAsFactors = FALSE
           )
 
 
@@ -2795,7 +2800,7 @@ server <- function(
 
 
           batch_file_error_message(
-            "The selected file could not be read as a CSV."
+            "The selected file could not be read as an XLSX file."
           )
 
 
@@ -3068,7 +3073,7 @@ server <- function(
             class = "batch-preview-title",
 
             paste0(
-              "CSV preview · first ",
+              "XLSX preview · first ",
               nrow(preview),
               " of ",
               nrow(file_result$data),
@@ -3089,7 +3094,7 @@ server <- function(
     tags$div(
       class = "batch-empty",
 
-      "Upload a learner CSV to assess multiple learners."
+      "Upload a learner XLSX to assess multiple learners."
     )
   })
 
@@ -3144,7 +3149,7 @@ server <- function(
       if (!isTRUE(file_result$success)) {
 
         batch_file_error_message(
-          "Please upload a learner CSV file."
+          "Please upload a learner XLSX file."
         )
 
 
@@ -3290,7 +3295,7 @@ server <- function(
         !nzchar(file_name)
       ) {
 
-        file_name <- "uploaded_batch.csv"
+        file_name <- "uploaded_batch.xlsx"
       }
 
 
@@ -3736,10 +3741,12 @@ server <- function(
       paste0(
         "non_completion_scoring_results_",
         Sys.Date(),
-        ".csv"
+        ".xlsx"
       )
     },
 
+    contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
     content = function(file) {
 
@@ -3759,11 +3766,12 @@ server <- function(
         )
 
 
-      write.csv(
-        predictions_for_download,
-        file,
-        row.names = FALSE,
-        na = ""
+      writexl::write_xlsx(
+        list(
+          `Scored learners` =
+            predictions_for_download
+        ),
+        path = file
       )
     }
   )
@@ -3776,10 +3784,12 @@ server <- function(
       paste0(
         "priority_intervention_queue_",
         Sys.Date(),
-        ".csv"
+        ".xlsx"
       )
     },
 
+    contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
     content = function(file) {
 
@@ -3799,11 +3809,12 @@ server <- function(
         )
 
 
-      write.csv(
-        queue_for_download,
-        file,
-        row.names = FALSE,
-        na = ""
+      writexl::write_xlsx(
+        list(
+          `Priority queue` =
+            queue_for_download
+        ),
+        path = file
       )
     }
   )
@@ -3816,10 +3827,12 @@ server <- function(
       paste0(
         "batch_validation_errors_",
         Sys.Date(),
-        ".csv"
+        ".xlsx"
       )
     },
 
+    contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
     content = function(file) {
 
@@ -3834,14 +3847,16 @@ server <- function(
       )
 
 
-      write.csv(
-        result$validation_errors,
-        file,
-        row.names = FALSE,
-        na = ""
+      writexl::write_xlsx(
+        list(
+          `Validation errors` =
+            result$validation_errors
+        ),
+        path = file
       )
     }
   )
+
 }
 
 
