@@ -753,6 +753,83 @@ format_batch_input_preview <- function(data) {
   preview
 }
 
+ensure_probability_columns <- function(data) {
+
+  if (
+    !is.data.frame(data) ||
+    nrow(data) == 0L
+  ) {
+
+    return(data)
+  }
+
+
+  if (
+    !"completion_probability" %in% names(data) &&
+    "completion_risk" %in% names(data)
+  ) {
+
+    data$completion_probability <-
+      1 - as.numeric(data$completion_risk)
+  }
+
+
+  if (
+    !"completion_risk" %in% names(data) &&
+    "completion_probability" %in% names(data)
+  ) {
+
+    data$completion_risk <-
+      1 - as.numeric(data$completion_probability)
+  }
+
+
+  data
+}
+
+
+# Keep completion probability before non-completion risk,
+# and always place non-completion risk at the far right.
+order_probability_columns <- function(data) {
+
+  if (!is.data.frame(data)) {
+    return(data)
+  }
+
+
+  data <- ensure_probability_columns(data)
+
+
+  ordinary_columns <- setdiff(
+    names(data),
+    c(
+      "completion_probability",
+      "completion_risk"
+    )
+  )
+
+
+  ordered_columns <- c(
+    ordinary_columns,
+    intersect(
+      "completion_probability",
+      names(data)
+    ),
+    intersect(
+      "completion_risk",
+      names(data)
+    )
+  )
+
+
+  data[
+    ,
+    ordered_columns,
+    drop = FALSE
+  ]
+}
+
+
 format_queue_for_display <- function(queue) {
 
   if (
@@ -766,12 +843,16 @@ format_queue_for_display <- function(queue) {
   }
 
 
+  queue <- order_probability_columns(queue)
+
+
   display <- queue[
     ,
     intersect(
       c(
         "risk_rank",
         "user_id",
+        "completion_probability",
         "completion_risk"
       ),
       names(queue)
@@ -780,12 +861,21 @@ format_queue_for_display <- function(queue) {
   ]
 
 
-  if ("completion_risk" %in% names(display)) {
+  probability_columns <- intersect(
+    c(
+      "completion_probability",
+      "completion_risk"
+    ),
+    names(display)
+  )
 
-    display$completion_risk <- sprintf(
+
+  for (column_name in probability_columns) {
+
+    display[[column_name]] <- sprintf(
       "%.1f%%",
       as.numeric(
-        display$completion_risk
+        display[[column_name]]
       ) * 100
     )
   }
@@ -794,6 +884,8 @@ format_queue_for_display <- function(queue) {
   rename_map <- c(
     risk_rank = "Rank",
     user_id = "User ID",
+    completion_probability =
+      "Completion probability",
     completion_risk =
       "Non-completion probability"
   )
@@ -823,11 +915,18 @@ format_predictions_for_display <- function(predictions) {
   }
 
 
+  predictions <-
+    order_probability_columns(
+      predictions
+    )
+
+
   display <- predictions[
     ,
     intersect(
       c(
         "user_id",
+        "completion_probability",
         "completion_risk"
       ),
       names(predictions)
@@ -836,12 +935,21 @@ format_predictions_for_display <- function(predictions) {
   ]
 
 
-  if ("completion_risk" %in% names(display)) {
+  probability_columns <- intersect(
+    c(
+      "completion_probability",
+      "completion_risk"
+    ),
+    names(display)
+  )
 
-    display$completion_risk <- sprintf(
+
+  for (column_name in probability_columns) {
+
+    display[[column_name]] <- sprintf(
       "%.1f%%",
       as.numeric(
-        display$completion_risk
+        display[[column_name]]
       ) * 100
     )
   }
@@ -849,6 +957,8 @@ format_predictions_for_display <- function(predictions) {
 
   rename_map <- c(
     user_id = "User ID",
+    completion_probability =
+      "Completion probability",
     completion_risk =
       "Non-completion probability"
   )
@@ -1568,6 +1678,19 @@ ui <- fluidPage(
           min-width: 620px;
         }
 
+        /* Keep the main risk signal visually prominent at the far right. */
+        .queue-table .table > thead > tr > th:last-child,
+        .queue-table .table > tbody > tr > td:last-child,
+        .prediction-table .table > thead > tr > th:last-child,
+        .prediction-table .table > tbody > tr > td:last-child {
+          font-weight: 700;
+        }
+
+        .queue-table .table > thead > tr > th:last-child,
+        .prediction-table .table > thead > tr > th:last-child {
+          border-left: 2px solid #d1d5db;
+        }
+
         .rejected-scroll {
           width: 100%;
           height: 300px;
@@ -1786,6 +1909,7 @@ ui <- fluidPage(
 
       tabPanel(
         "Single Learner",
+        value = "single",
 
 
         fluidRow(
@@ -1976,6 +2100,7 @@ ui <- fluidPage(
 
       tabPanel(
         "Batch CSV",
+        value = "batch",
 
 
         conditionalPanel(
@@ -2486,6 +2611,16 @@ server <- function(
 
   batch_result <- reactiveVal(NULL)
 
+  # Keep uploaded CSV data in explicit application state.
+  # We intentionally do not use input$batch_file as the source
+  # of truth after upload because a dynamically rebuilt fileInput
+  # can leave the previous server-side input value available.
+  batch_uploaded_data <-
+    reactiveVal(NULL)
+
+  batch_uploaded_name <-
+    reactiveVal(NULL)
+
   batch_file_error_message <-
     reactiveVal(NULL)
 
@@ -2496,9 +2631,44 @@ server <- function(
     reactiveVal(NULL)
 
   # Incrementing this value rebuilds both batch inputs.
-  # This is used to start a completely clean new batch.
   batch_input_version <-
     reactiveVal(0L)
+
+
+  reset_batch_state <- function() {
+
+    # Clear all batch data and results.
+    batch_result(NULL)
+
+    batch_uploaded_data(NULL)
+
+    batch_uploaded_name(NULL)
+
+
+    # Clear all local messages.
+    batch_file_error_message(NULL)
+
+    batch_capacity_error_message(NULL)
+
+    batch_service_error_message(NULL)
+
+
+    # Remove possible file-input error styling.
+    session$sendCustomMessage(
+      "setBatchFileError",
+
+      list(
+        hasError = FALSE
+      )
+    )
+
+
+    # Rebuild file input and capacity input.
+    # The new file input is visually empty and Top N returns to 10.
+    batch_input_version(
+      batch_input_version() + 1L
+    )
+  }
 
 
   # ==========================================================
@@ -2540,12 +2710,116 @@ server <- function(
 
 
   # ==========================================================
+  # Reset Batch CSV whenever the user returns to the tab
+  # ==========================================================
+
+  observeEvent(
+    input$prediction_mode,
+    {
+
+      if (
+        identical(
+          input$prediction_mode,
+          "batch"
+        )
+      ) {
+
+        reset_batch_state()
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+
+  # ==========================================================
   # Batch file
   # ==========================================================
 
+  observeEvent(
+    input$batch_file,
+    {
+
+      if (is.null(input$batch_file)) {
+
+        return()
+      }
+
+
+      # Selecting another file always starts a new assessment.
+      batch_result(NULL)
+
+      batch_uploaded_data(NULL)
+
+      batch_uploaded_name(NULL)
+
+      batch_file_error_message(NULL)
+
+      batch_capacity_error_message(NULL)
+
+      batch_service_error_message(NULL)
+
+
+      session$sendCustomMessage(
+        "setBatchFileError",
+
+        list(
+          hasError = FALSE
+        )
+      )
+
+
+      uploaded_file <-
+        input$batch_file
+
+
+      tryCatch(
+        {
+          data <- read.csv(
+            uploaded_file$datapath,
+            stringsAsFactors = FALSE,
+            check.names = FALSE
+          )
+
+
+          batch_uploaded_data(data)
+
+          batch_uploaded_name(
+            uploaded_file$name
+          )
+        },
+        error = function(error) {
+
+          batch_uploaded_data(NULL)
+
+          batch_uploaded_name(NULL)
+
+
+          batch_file_error_message(
+            "The selected file could not be read as a CSV."
+          )
+
+
+          session$sendCustomMessage(
+            "setBatchFileError",
+
+            list(
+              hasError = TRUE
+            )
+          )
+        }
+      )
+    },
+    ignoreInit = TRUE
+  )
+
+
   batch_file_result <- reactive({
 
-    if (is.null(input$batch_file)) {
+    data <-
+      batch_uploaded_data()
+
+
+    if (is.null(data)) {
 
       return(
         list(
@@ -2557,29 +2831,10 @@ server <- function(
     }
 
 
-    tryCatch(
-      {
-        data <- read.csv(
-          input$batch_file$datapath,
-          stringsAsFactors = FALSE,
-          check.names = FALSE
-        )
-
-
-        list(
-          success = TRUE,
-          data = data,
-          error = NULL
-        )
-      },
-      error = function(error) {
-
-        list(
-          success = FALSE,
-          data = NULL,
-          error = conditionMessage(error)
-        )
-      }
+    list(
+      success = TRUE,
+      data = data,
+      error = NULL
     )
   })
 
@@ -2669,30 +2924,6 @@ server <- function(
 
 
   # ==========================================================
-  # Clear local file error when a file is selected
-  # ==========================================================
-
-  observeEvent(
-    input$batch_file,
-    {
-
-      batch_file_error_message(NULL)
-
-      batch_service_error_message(NULL)
-
-      session$sendCustomMessage(
-        "setBatchFileError",
-
-        list(
-          hasError = FALSE
-        )
-      )
-    },
-    ignoreInit = TRUE
-  )
-
-
-  # ==========================================================
   # Batch local error outputs
   # ==========================================================
 
@@ -2752,10 +2983,7 @@ server <- function(
       batch_file_result()
 
 
-    if (
-      is.null(input$batch_file) ||
-      !isTRUE(result$success)
-    ) {
+    if (!isTRUE(result$success)) {
 
       return(NULL)
     }
@@ -2823,10 +3051,7 @@ server <- function(
       batch_file_result()
 
 
-    if (
-      !is.null(input$batch_file) &&
-      isTRUE(file_result$success)
-    ) {
+    if (isTRUE(file_result$success)) {
 
       preview <-
         format_batch_input_preview(
@@ -2877,32 +3102,7 @@ server <- function(
     input$new_batch,
     {
 
-      # Clear previous result.
-      batch_result(NULL)
-
-      # Clear validation and service messages.
-      batch_file_error_message(NULL)
-
-      batch_capacity_error_message(NULL)
-
-      batch_service_error_message(NULL)
-
-
-      # Remove possible file-input error styling.
-      session$sendCustomMessage(
-        "setBatchFileError",
-
-        list(
-          hasError = FALSE
-        )
-      )
-
-
-      # Rebuild the batch inputs. This clears the selected CSV,
-      # removes the old preview and restores Top N to 10.
-      batch_input_version(
-        batch_input_version() + 1L
-      )
+      reset_batch_state()
     },
     ignoreInit = TRUE
   )
@@ -2916,7 +3116,7 @@ server <- function(
     input$score_batch,
     {
 
-      # Reset local errors
+      # Reset local errors.
       batch_file_error_message(NULL)
 
       batch_capacity_error_message(NULL)
@@ -2937,38 +3137,14 @@ server <- function(
       # File selected?
       # --------------------------------------------------------
 
-      if (is.null(input$batch_file)) {
-
-        batch_file_error_message(
-          "Please upload a learner CSV file."
-        )
-
-
-        session$sendCustomMessage(
-          "setBatchFileError",
-
-          list(
-            hasError = TRUE
-          )
-        )
-
-
-        return()
-      }
-
-
       file_result <-
         batch_file_result()
 
 
-      # --------------------------------------------------------
-      # File readable?
-      # --------------------------------------------------------
-
       if (!isTRUE(file_result$success)) {
 
         batch_file_error_message(
-          "The selected file could not be read as a CSV."
+          "Please upload a learner CSV file."
         )
 
 
@@ -3103,6 +3279,21 @@ server <- function(
       }
 
 
+      file_name <-
+        batch_uploaded_name()
+
+
+      if (
+        is.null(file_name) ||
+        length(file_name) != 1L ||
+        is.na(file_name) ||
+        !nzchar(file_name)
+      ) {
+
+        file_name <- "uploaded_batch.csv"
+      }
+
+
       # --------------------------------------------------------
       # All rows rejected
       # --------------------------------------------------------
@@ -3113,8 +3304,7 @@ server <- function(
           list(
             success = TRUE,
 
-            file_name =
-              input$batch_file$name,
+            file_name = file_name,
 
             uploaded_count =
               validation_result$uploaded_count,
@@ -3186,12 +3376,24 @@ server <- function(
         )
 
 
+      # Make both probabilities available to the UI even if an
+      # older API response contains only one of them.
+      predictions <-
+        ensure_probability_columns(
+          predictions
+        )
+
+      queue <-
+        ensure_probability_columns(
+          queue
+        )
+
+
       batch_result(
         list(
           success = TRUE,
 
-          file_name =
-            input$batch_file$name,
+          file_name = file_name,
 
           uploaded_count =
             validation_result$uploaded_count,
@@ -3286,11 +3488,32 @@ server <- function(
 
 
     # ----------------------------------------------------------
+    # All scored learners
+    # ----------------------------------------------------------
+
+    predictions_tab <- tabPanel(
+      "All scored learners",
+
+      tags$div(
+        class = "queue-scroll",
+
+        compact_table_ui(
+          format_predictions_for_display(
+            result$predictions
+          ),
+          "prediction-table"
+        )
+      )
+    )
+
+
+    # ----------------------------------------------------------
     # Rejected rows
     # ----------------------------------------------------------
 
     result_tabs <- list(
-      queue_tab
+      queue_tab,
+      predictions_tab
     )
 
 
@@ -3530,8 +3753,14 @@ server <- function(
       )
 
 
+      predictions_for_download <-
+        order_probability_columns(
+          result$predictions
+        )
+
+
       write.csv(
-        result$predictions,
+        predictions_for_download,
         file,
         row.names = FALSE,
         na = ""
@@ -3564,8 +3793,14 @@ server <- function(
       )
 
 
+      queue_for_download <-
+        order_probability_columns(
+          result$queue
+        )
+
+
       write.csv(
-        result$queue,
+        queue_for_download,
         file,
         row.names = FALSE,
         na = ""
