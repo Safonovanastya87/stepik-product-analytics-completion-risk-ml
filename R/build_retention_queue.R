@@ -58,10 +58,13 @@ build_retention_queue <- function(
   if (length(missing_cols) > 0L) {
 
     stop(
-      "Missing required columns: ",
-      paste(
-        missing_cols,
-        collapse = ", "
+      paste0(
+        "Missing required columns: ",
+        paste(
+          missing_cols,
+          collapse = ", "
+        ),
+        "."
       ),
       call. = FALSE
     )
@@ -90,8 +93,20 @@ build_retention_queue <- function(
   }
 
 
+  if (anyDuplicated(learner_ids) > 0L) {
+
+    stop(
+      sprintf(
+        "`%s` must contain unique learner identifiers.",
+        id_col
+      ),
+      call. = FALSE
+    )
+  }
+
+
   # ============================================================
-  # Validate prediction columns
+  # Validate probability columns
   # ============================================================
 
   probability_cols <- c(
@@ -116,10 +131,13 @@ build_retention_queue <- function(
   if (length(non_numeric_cols) > 0L) {
 
     stop(
-      "The following columns must be numeric: ",
-      paste(
-        non_numeric_cols,
-        collapse = ", "
+      paste0(
+        "The following columns must be numeric: ",
+        paste(
+          non_numeric_cols,
+          collapse = ", "
+        ),
+        "."
       ),
       call. = FALSE
     )
@@ -148,10 +166,48 @@ build_retention_queue <- function(
   if (length(invalid_probability_cols) > 0L) {
 
     stop(
-      "The following columns must contain values between 0 and 1: ",
-      paste(
-        invalid_probability_cols,
-        collapse = ", "
+      paste0(
+        "The following columns must contain ",
+        "values between 0 and 1: ",
+        paste(
+          invalid_probability_cols,
+          collapse = ", "
+        ),
+        "."
+      ),
+      call. = FALSE
+    )
+  }
+
+
+  # ============================================================
+  # Validate probability relationship
+  # ============================================================
+
+  expected_completion_risk <-
+    1 - predictions$completion_probability
+
+
+  inconsistent_rows <- which(
+    abs(
+      predictions$completion_risk -
+        expected_completion_risk
+    ) > 1e-8
+  )
+
+
+  if (length(inconsistent_rows) > 0L) {
+
+    stop(
+      paste0(
+        "`completion_risk` must equal ",
+        "1 - `completion_probability`. ",
+        "Invalid row(s): ",
+        paste(
+          inconsistent_rows,
+          collapse = ", "
+        ),
+        "."
       ),
       call. = FALSE
     )
@@ -170,12 +226,13 @@ build_retention_queue <- function(
 
   valid_top_n <- (
     length(top_n) == 1L &&
-    is.numeric(top_n) &&
-    !is.na(top_n) &&
-    is.finite(top_n) &&
-    top_n >= 1 &&
-    abs(top_n - round(top_n)) <=
-      sqrt(.Machine$double.eps)
+      is.numeric(top_n) &&
+      !is.na(top_n) &&
+      is.finite(top_n) &&
+      top_n >= 1 &&
+      abs(
+        top_n - round(top_n)
+      ) <= sqrt(.Machine$double.eps)
   )
 
 
@@ -197,7 +254,8 @@ build_retention_queue <- function(
 
     stop(
       paste0(
-        "`top_n` cannot exceed the number of scored learners (",
+        "`top_n` cannot exceed the number of ",
+        "scored learners (",
         nrow(predictions),
         ")."
       ),
@@ -207,50 +265,55 @@ build_retention_queue <- function(
 
 
   # ============================================================
-  # Build ranked priority intervention queue
+  # Rank learners by non-completion risk
   # ============================================================
 
-  queue <- predictions[
-    order(
-      -predictions$completion_risk,
-      predictions$completion_probability,
-      seq_len(nrow(predictions))
-    ),
+  ranking_order <- order(
+    -predictions$completion_risk,
+    seq_len(nrow(predictions))
+  )
+
+
+  ranked_predictions <- predictions[
+    ranking_order,
     ,
     drop = FALSE
   ]
 
 
-  queue <- head(
-    queue,
+  ranked_predictions <- head(
+    ranked_predictions,
     top_n
   )
 
 
-  queue$risk_rank <- seq_len(
-    nrow(queue)
+  # ============================================================
+  # Build strict priority queue output
+  # ============================================================
+
+  queue <- data.frame(
+    risk_rank =
+      seq_len(
+        nrow(ranked_predictions)
+      ),
+
+    learner_id =
+      ranked_predictions[[id_col]],
+
+    completion_risk =
+      ranked_predictions$
+        completion_risk,
+
+    completion_probability =
+      ranked_predictions$
+        completion_probability,
+
+    stringsAsFactors = FALSE,
+    check.names = FALSE
   )
 
 
-  first_cols <- c(
-    "risk_rank",
-    id_col,
-    "completion_risk",
-    "completion_probability"
-  )
-
-
-  queue <- queue[
-    ,
-    c(
-      first_cols,
-      setdiff(
-        names(queue),
-        first_cols
-      )
-    ),
-    drop = FALSE
-  ]
+  names(queue)[2] <- id_col
 
 
   rownames(queue) <- NULL

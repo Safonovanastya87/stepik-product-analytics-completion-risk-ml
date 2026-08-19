@@ -6,7 +6,9 @@ source("R/predict_completion_risk.R")
 source("R/build_retention_queue.R")
 
 
-# Load the model once when the API starts
+# ============================================================
+# Load model once when the API starts
+# ============================================================
 
 loaded_model <- load_completion_risk_artifact()
 
@@ -76,7 +78,10 @@ request_records_to_data_frame <- function(records) {
 
 
   stop(
-    "Learner data must be a JSON object or an array of JSON objects.",
+    paste(
+      "Learner data must be a JSON object",
+      "or an array of JSON objects."
+    ),
     call. = FALSE
   )
 }
@@ -108,21 +113,25 @@ validate_and_normalize_user_ids <- function(data) {
 
   valid_user_ids <- (
     length(user_ids) == nrow(data) &&
-    is.numeric(user_ids) &&
-    !anyNA(user_ids) &&
-    all(is.finite(user_ids)) &&
-    all(user_ids > 0) &&
-    all(
-      abs(user_ids - round(user_ids)) <=
-        sqrt(.Machine$double.eps)
-    )
+      is.numeric(user_ids) &&
+      !anyNA(user_ids) &&
+      all(is.finite(user_ids)) &&
+      all(user_ids > 0) &&
+      all(
+        abs(
+          user_ids - round(user_ids)
+        ) <= sqrt(.Machine$double.eps)
+      )
   )
 
 
   if (!isTRUE(valid_user_ids)) {
 
     stop(
-      "`user_id` must contain one positive whole number per learner.",
+      paste(
+        "`user_id` must contain one positive",
+        "whole number per learner."
+      ),
       call. = FALSE
     )
   }
@@ -170,12 +179,13 @@ validate_top_n <- function(
 
   valid_top_n <- (
     length(top_n) == 1L &&
-    is.numeric(top_n) &&
-    !is.na(top_n) &&
-    is.finite(top_n) &&
-    top_n > 0 &&
-    abs(top_n - round(top_n)) <=
-      sqrt(.Machine$double.eps)
+      is.numeric(top_n) &&
+      !is.na(top_n) &&
+      is.finite(top_n) &&
+      top_n > 0 &&
+      abs(
+        top_n - round(top_n)
+      ) <= sqrt(.Machine$double.eps)
   )
 
 
@@ -197,7 +207,8 @@ validate_top_n <- function(
 
     stop(
       paste0(
-        "`top_n` cannot exceed the number of learners in the batch (",
+        "`top_n` cannot exceed the number of ",
+        "learners in the batch (",
         learner_count,
         ")."
       ),
@@ -212,7 +223,10 @@ validate_top_n <- function(
 
 data_frame_to_records <- function(data) {
 
-  if (nrow(data) == 0L) {
+  if (
+    !is.data.frame(data) ||
+    nrow(data) == 0L
+  ) {
 
     return(
       list()
@@ -243,6 +257,68 @@ data_frame_to_records <- function(data) {
 }
 
 
+clean_prediction_output <- function(predictions) {
+
+  deprecated_columns <- c(
+    "classification_threshold",
+    "predicted_completion_status"
+  )
+
+
+  predictions[
+    ,
+    setdiff(
+      names(predictions),
+      deprecated_columns
+    ),
+    drop = FALSE
+  ]
+}
+
+
+clean_queue_output <- function(
+  retention_queue,
+  id_col = "user_id"
+) {
+
+  required_columns <- c(
+    "risk_rank",
+    id_col,
+    "completion_risk",
+    "completion_probability"
+  )
+
+
+  missing_columns <- setdiff(
+    required_columns,
+    names(retention_queue)
+  )
+
+
+  if (length(missing_columns) > 0L) {
+
+    stop(
+      paste0(
+        "Priority queue is missing required column(s): ",
+        paste(
+          missing_columns,
+          collapse = ", "
+        ),
+        "."
+      ),
+      call. = FALSE
+    )
+  }
+
+
+  retention_queue[
+    ,
+    required_columns,
+    drop = FALSE
+  ]
+}
+
+
 # ============================================================
 # Create API router
 # ============================================================
@@ -250,15 +326,20 @@ data_frame_to_records <- function(data) {
 api <- plumber::pr()
 
 
+# Accept JSON request bodies
+
 api <- plumber::pr_set_parsers(
   pr = api,
   parsers = "json"
 )
 
 
+# Return scalar values instead of one-element JSON arrays
+
 api <- plumber::pr_set_serializer(
   pr = api,
-  serializer = plumber::serializer_unboxed_json()
+  serializer =
+    plumber::serializer_unboxed_json()
 )
 
 
@@ -271,9 +352,10 @@ api <- plumber::pr_get(
   path = "/health",
   handler = function() {
 
-    feature_cols <- loaded_model$artifact$
-      inference_settings$
-      feature_cols
+    feature_cols <-
+      loaded_model$artifact$
+        inference_settings$
+        feature_cols
 
 
     list(
@@ -300,6 +382,7 @@ api <- plumber::pr_get(
 
 # ============================================================
 # POST /predict
+# Single-learner risk prediction
 # ============================================================
 
 api <- plumber::pr_post(
@@ -317,7 +400,8 @@ api <- plumber::pr_post(
 
       return(
         list(
-          error = "JSON request body is required."
+          error =
+            "JSON request body is required."
         )
       )
     }
@@ -350,10 +434,68 @@ api <- plumber::pr_post(
           )
 
 
-        prediction <- predict_completion_risk(
-          data = prediction_input,
-          loaded_model = loaded_model
-        )
+        prediction_raw <-
+          predict_completion_risk(
+            data = prediction_input,
+            loaded_model = loaded_model
+          )
+
+
+        prediction <-
+          clean_prediction_output(
+            prediction_raw
+          )
+
+
+        if (
+          !"completion_probability" %in%
+            names(prediction) ||
+          !"completion_risk" %in%
+            names(prediction)
+        ) {
+
+          stop(
+            paste(
+              "Prediction output must contain",
+              "`completion_probability` and",
+              "`completion_risk`."
+            ),
+            call. = FALSE
+          )
+        }
+
+
+        completion_probability <-
+          as.numeric(
+            prediction$
+              completion_probability[[1]]
+          )
+
+
+        completion_risk <-
+          as.numeric(
+            prediction$
+              completion_risk[[1]]
+          )
+
+
+        if (
+          !is.finite(completion_probability) ||
+          completion_probability < 0 ||
+          completion_probability > 1 ||
+          !is.finite(completion_risk) ||
+          completion_risk < 0 ||
+          completion_risk > 1
+        ) {
+
+          stop(
+            paste(
+              "Prediction probabilities must",
+              "be between 0 and 1."
+            ),
+            call. = FALSE
+          )
+        }
 
 
         list(
@@ -361,16 +503,10 @@ api <- plumber::pr_post(
             prediction$user_id[[1]],
 
           completion_probability =
-            prediction$completion_probability[[1]],
+            completion_probability,
 
           completion_risk =
-            prediction$completion_risk[[1]],
-
-          classification_threshold =
-            prediction$classification_threshold[[1]],
-
-          predicted_completion_status =
-            prediction$predicted_completion_status[[1]]
+            completion_risk
         )
       },
       error = function(error) {
@@ -407,7 +543,8 @@ api <- plumber::pr_post(
 
       return(
         list(
-          error = "JSON request body is required."
+          error =
+            "JSON request body is required."
         )
       )
     }
@@ -451,6 +588,10 @@ api <- plumber::pr_post(
     tryCatch(
       {
 
+        # --------------------------------------------------------
+        # Convert request data
+        # --------------------------------------------------------
+
         batch_input <-
           request_records_to_data_frame(
             request_body$learners
@@ -460,11 +601,18 @@ api <- plumber::pr_post(
         if (nrow(batch_input) == 0L) {
 
           stop(
-            "`learners` must contain at least one learner.",
+            paste(
+              "`learners` must contain",
+              "at least one learner."
+            ),
             call. = FALSE
           )
         }
 
+
+        # --------------------------------------------------------
+        # Validate learner IDs
+        # --------------------------------------------------------
 
         batch_input <-
           validate_and_normalize_user_ids(
@@ -472,24 +620,129 @@ api <- plumber::pr_post(
           )
 
 
+        # --------------------------------------------------------
+        # Validate intervention capacity
+        # --------------------------------------------------------
+
         top_n <- validate_top_n(
           top_n = request_body$top_n,
           learner_count = nrow(batch_input)
         )
 
 
-        predictions <- predict_completion_risk(
-          data = batch_input,
-          loaded_model = loaded_model
+        # --------------------------------------------------------
+        # Score all learners
+        # --------------------------------------------------------
+
+        predictions_raw <-
+          predict_completion_risk(
+            data = batch_input,
+            loaded_model = loaded_model
+          )
+
+
+        # --------------------------------------------------------
+        # Build Top-N priority queue
+        # --------------------------------------------------------
+
+        retention_queue_raw <-
+          build_retention_queue(
+            predictions = predictions_raw,
+            id_col = "user_id",
+            top_n = top_n
+          )
+
+
+        # --------------------------------------------------------
+        # Remove deprecated classification output
+        # --------------------------------------------------------
+
+        predictions <-
+          clean_prediction_output(
+            predictions_raw
+          )
+
+
+        retention_queue <-
+          clean_queue_output(
+            retention_queue_raw,
+            id_col = "user_id"
+          )
+
+
+        # --------------------------------------------------------
+        # Validate probability ranges
+        # --------------------------------------------------------
+
+        if (
+          !"completion_probability" %in%
+            names(predictions) ||
+          !"completion_risk" %in%
+            names(predictions)
+        ) {
+
+          stop(
+            paste(
+              "Prediction output must contain",
+              "`completion_probability` and",
+              "`completion_risk`."
+            ),
+            call. = FALSE
+          )
+        }
+
+
+        completion_probabilities <-
+          as.numeric(
+            predictions$
+              completion_probability
+          )
+
+
+        completion_risks <-
+          as.numeric(
+            predictions$
+              completion_risk
+          )
+
+
+        valid_probabilities <- (
+          all(
+            is.finite(
+              completion_probabilities
+            )
+          ) &&
+          all(
+            completion_probabilities >= 0 &
+              completion_probabilities <= 1
+          ) &&
+          all(
+            is.finite(
+              completion_risks
+            )
+          ) &&
+          all(
+            completion_risks >= 0 &
+              completion_risks <= 1
+          )
         )
 
 
-        retention_queue <- build_retention_queue(
-          predictions = predictions,
-          id_col = "user_id",
-          top_n = top_n
-        )
+        if (!isTRUE(valid_probabilities)) {
 
+          stop(
+            paste(
+              "Prediction probabilities must",
+              "be between 0 and 1."
+            ),
+            call. = FALSE
+          )
+        }
+
+
+        # --------------------------------------------------------
+        # Response
+        # --------------------------------------------------------
 
         list(
           learner_count =

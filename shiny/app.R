@@ -1978,10 +1978,6 @@ ui <- fluidPage(
         "Batch CSV",
 
 
-        # IMPORTANT:
-        # This container is never recreated by renderUI.
-        # Therefore fileInput keeps the real selected filename.
-
         conditionalPanel(
           condition =
             "output.batch_result_ready != 'true'",
@@ -2007,15 +2003,8 @@ ui <- fluidPage(
                       id = "batch_file_wrapper",
 
 
-                      fileInput(
-                        "batch_file",
-                        "Learner CSV",
-                        accept = c(
-                          ".csv",
-                          "text/csv",
-                          "text/comma-separated-values"
-                        ),
-                        width = "100%"
+                      uiOutput(
+                        "batch_file_input"
                       )
                     ),
 
@@ -2035,13 +2024,8 @@ ui <- fluidPage(
                     width = 3,
 
 
-                    numericInput(
-                      "batch_top_n",
-                      "Learners to prioritize",
-                      value = 10,
-                      min = 1,
-                      step = 1,
-                      width = "100%"
+                    uiOutput(
+                      "batch_top_n_input"
                     ),
 
 
@@ -2511,6 +2495,49 @@ server <- function(
   batch_service_error_message <-
     reactiveVal(NULL)
 
+  # Incrementing this value rebuilds both batch inputs.
+  # This is used to start a completely clean new batch.
+  batch_input_version <-
+    reactiveVal(0L)
+
+
+  # ==========================================================
+  # Dynamic batch inputs
+  # ==========================================================
+
+  output$batch_file_input <- renderUI({
+
+    batch_input_version()
+
+
+    fileInput(
+      "batch_file",
+      "Learner CSV",
+      accept = c(
+        ".csv",
+        "text/csv",
+        "text/comma-separated-values"
+      ),
+      width = "100%"
+    )
+  })
+
+
+  output$batch_top_n_input <- renderUI({
+
+    batch_input_version()
+
+
+    numericInput(
+      "batch_top_n",
+      "Learners to prioritize",
+      value = 10,
+      min = 1,
+      step = 1,
+      width = "100%"
+    )
+  })
+
 
   # ==========================================================
   # Batch file
@@ -2850,13 +2877,32 @@ server <- function(
     input$new_batch,
     {
 
+      # Clear previous result.
       batch_result(NULL)
 
+      # Clear validation and service messages.
       batch_file_error_message(NULL)
 
       batch_capacity_error_message(NULL)
 
       batch_service_error_message(NULL)
+
+
+      # Remove possible file-input error styling.
+      session$sendCustomMessage(
+        "setBatchFileError",
+
+        list(
+          hasError = FALSE
+        )
+      )
+
+
+      # Rebuild the batch inputs. This clears the selected CSV,
+      # removes the old preview and restores Top N to 10.
+      batch_input_version(
+        batch_input_version() + 1L
+      )
     },
     ignoreInit = TRUE
   )

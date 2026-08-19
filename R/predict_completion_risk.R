@@ -1,8 +1,10 @@
 # Generate completion-risk predictions
+
 predict_completion_risk <- function(
   data,
   loaded_model
 ) {
+
   # ============================================================
   # Validate loaded model structure
   # ============================================================
@@ -12,47 +14,47 @@ predict_completion_risk <- function(
     is.null(loaded_model$model) ||
     is.null(loaded_model$artifact)
   ) {
+
     stop(
       "`loaded_model` must be created by load_completion_risk_artifact().",
       call. = FALSE
     )
   }
 
+
   if (!inherits(loaded_model$model, "xgb.Booster")) {
+
     stop(
       "`loaded_model$model` must be an xgb.Booster object.",
       call. = FALSE
     )
   }
 
+
   # ============================================================
   # Retrieve inference configuration
   # ============================================================
 
-  feature_cols <- loaded_model$artifact$
-    inference_settings$
-    feature_cols
+  feature_cols <-
+    loaded_model$artifact$
+      inference_settings$
+      feature_cols
 
-  classification_threshold <- loaded_model$artifact$
-    inference_settings$
-    threshold
 
   if (
-    length(classification_threshold) != 1L ||
-    !is.numeric(classification_threshold) ||
-    is.na(classification_threshold) ||
-    !is.finite(classification_threshold) ||
-    classification_threshold < 0 ||
-    classification_threshold > 1
+    is.null(feature_cols) ||
+    length(feature_cols) == 0L
   ) {
+
     stop(
-      paste0(
-        "The model artifact contains an invalid ",
-        "classification threshold."
+      paste(
+        "The model artifact does not contain",
+        "a valid feature configuration."
       ),
       call. = FALSE
     )
   }
+
 
   # ============================================================
   # Validate external prediction input
@@ -63,6 +65,7 @@ predict_completion_risk <- function(
     feature_cols = feature_cols
   )
 
+
   # ============================================================
   # Generate model predictions
   # ============================================================
@@ -71,6 +74,7 @@ predict_completion_risk <- function(
     feature_data
   )
 
+
   completion_probability <- as.numeric(
     predict(
       loaded_model$model,
@@ -78,40 +82,72 @@ predict_completion_risk <- function(
     )
   )
 
+
   # ============================================================
   # Validate model output
   # ============================================================
 
   if (
-    length(completion_probability) != nrow(feature_data) ||
+    length(completion_probability) !=
+      nrow(feature_data) ||
     anyNA(completion_probability) ||
-    any(!is.finite(completion_probability))
+    any(
+      !is.finite(
+        completion_probability
+      )
+    )
   ) {
+
     stop(
       "The model returned invalid predictions.",
       call. = FALSE
     )
   }
 
+
   if (
     any(completion_probability < 0) ||
     any(completion_probability > 1)
   ) {
+
     stop(
-      "Predicted probabilities must be between 0 and 1.",
+      paste(
+        "Predicted probabilities must",
+        "be between 0 and 1."
+      ),
       call. = FALSE
     )
   }
 
+
   # ============================================================
-  # Calculate diagnostic prediction status
+  # Calculate non-completion risk
   # ============================================================
 
-  predicted_completion_status <- ifelse(
-    completion_probability >= classification_threshold,
-    "Predicted_Completed",
-    "Predicted_Not_Completed"
-  )
+  completion_risk <-
+    1 - completion_probability
+
+
+  if (
+    anyNA(completion_risk) ||
+    any(
+      !is.finite(
+        completion_risk
+      )
+    ) ||
+    any(completion_risk < 0) ||
+    any(completion_risk > 1)
+  ) {
+
+    stop(
+      paste(
+        "Calculated completion risks must",
+        "be between 0 and 1."
+      ),
+      call. = FALSE
+    )
+  }
+
 
   # ============================================================
   # Build prediction result
@@ -119,17 +155,14 @@ predict_completion_risk <- function(
 
   result <- data
 
+
   result$completion_probability <-
     completion_probability
 
+
   result$completion_risk <-
-    1 - completion_probability
+    completion_risk
 
-  result$classification_threshold <-
-    classification_threshold
-
-  result$predicted_completion_status <-
-    predicted_completion_status
 
   result
 }
