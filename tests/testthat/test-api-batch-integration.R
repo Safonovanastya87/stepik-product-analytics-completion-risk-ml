@@ -354,9 +354,9 @@ testthat::test_that(
 
     expected_queue_columns <- c(
       "risk_rank",
-      "user_id",
-      "completion_risk",
-      "completion_probability"
+     "user_id",
+     "completion_probability",
+     "completion_risk"
     )
 
 

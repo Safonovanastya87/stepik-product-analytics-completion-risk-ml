@@ -1,4 +1,4 @@
-# Run completion-risk scoring for a CSV file
+# Run batch completion-risk scoring for an XLSX file
 
 run_batch_scoring <- function(
   input_path,
@@ -78,17 +78,22 @@ run_batch_scoring <- function(
   # Read learner data
   # ============================================================
 
-  learner_data <- read.csv(
-    input_path,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
+  learner_data <- readxl::read_excel(
+    input_path
+  )
+
+
+  learner_data <- as.data.frame(
+    learner_data,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
   )
 
 
   if (nrow(learner_data) == 0L) {
 
     stop(
-      "The input CSV contains no learners.",
+      "The input XLSX contains no learners.",
       call. = FALSE
     )
   }
@@ -162,7 +167,8 @@ run_batch_scoring <- function(
 
   prediction_output_cols <- c(
     names(learner_data),
-    required_prediction_cols
+    "completion_probability",
+    "completion_risk"
   )
 
 
@@ -267,8 +273,8 @@ run_batch_scoring <- function(
   expected_queue_cols <- c(
     "risk_rank",
     id_col,
-    "completion_risk",
-    "completion_probability"
+    "completion_probability",
+    "completion_risk"
   )
 
 
@@ -320,11 +326,9 @@ run_batch_scoring <- function(
   # Save prediction results
   # ============================================================
 
-  write.csv(
+  writexl::write_xlsx(
     predictions,
-    predictions_output_path,
-    row.names = FALSE,
-    na = ""
+    predictions_output_path
   )
 
 
@@ -332,11 +336,9 @@ run_batch_scoring <- function(
   # Save priority queue
   # ============================================================
 
-  write.csv(
+  writexl::write_xlsx(
     retention_queue,
-    queue_output_path,
-    row.names = FALSE,
-    na = ""
+    queue_output_path
   )
 
 

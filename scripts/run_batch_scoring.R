@@ -8,11 +8,11 @@ source("R/batch_scoring.R")
 
 
 batch_result <- run_batch_scoring(
-  input_path = "data/prediction_input.csv",
+  input_path = "data/prediction_input.xlsx",
   predictions_output_path =
-    "outputs/completion_risk_predictions.csv",
+    "outputs/completion_risk_predictions.xlsx",
   queue_output_path =
-    "outputs/retention_queue.csv",
+    "outputs/retention_queue.xlsx",
   min_risk = 0.5
 )
 

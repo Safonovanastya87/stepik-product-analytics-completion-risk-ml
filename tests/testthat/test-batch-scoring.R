@@ -7,28 +7,27 @@ testthat::test_that(
     # ============================================================
 
     input_path <- tempfile(
-      fileext = ".csv"
+      fileext = ".xlsx"
     )
 
 
     predictions_output_path <- tempfile(
-      fileext = ".csv"
+      fileext = ".xlsx"
     )
 
 
     queue_output_path <- tempfile(
-      fileext = ".csv"
+      fileext = ".xlsx"
     )
 
 
     # ============================================================
-    # Prepare input CSV
+    # Prepare input XLSX
     # ============================================================
 
-    write.csv(
+    writexl::write_xlsx(
       valid_test_data,
-      input_path,
-      row.names = FALSE
+      input_path
     )
 
 
@@ -230,8 +229,8 @@ testthat::test_that(
     expected_queue_columns <- c(
       "risk_rank",
       "user_id",
-      "completion_risk",
-      "completion_probability"
+      "completion_probability",
+      "completion_risk"
     )
 
 
@@ -339,25 +338,33 @@ testthat::test_that(
 
 
     # ============================================================
-    # Read saved CSV files
+    # Read saved XLSX files
     # ============================================================
 
-    saved_predictions <- read.csv(
-      predictions_output_path,
-      stringsAsFactors = FALSE,
-      check.names = FALSE
+    saved_predictions <- readxl::read_excel(
+      predictions_output_path
+    )
+
+    saved_predictions <- as.data.frame(
+      saved_predictions,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
     )
 
 
-    saved_queue <- read.csv(
-      queue_output_path,
-      stringsAsFactors = FALSE,
-      check.names = FALSE
+    saved_queue <- readxl::read_excel(
+      queue_output_path
+    )
+
+    saved_queue <- as.data.frame(
+      saved_queue,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
     )
 
 
     # ============================================================
-    # Saved prediction CSV contract
+    # Saved prediction XLSX contract
     # ============================================================
 
     testthat::expect_identical(
@@ -415,7 +422,7 @@ testthat::test_that(
 
 
     # ============================================================
-    # Saved queue CSV contract
+    # Saved queue XLSX contract
     # ============================================================
 
     testthat::expect_identical(
@@ -489,28 +496,27 @@ testthat::test_that(
     # ============================================================
 
     input_path <- tempfile(
-      fileext = ".csv"
+      fileext = ".xlsx"
     )
 
 
     predictions_output_path <- tempfile(
-      fileext = ".csv"
+      fileext = ".xlsx"
     )
 
 
     queue_output_path <- tempfile(
-      fileext = ".csv"
+      fileext = ".xlsx"
     )
 
 
     # ============================================================
-    # Prepare input CSV
+    # Prepare input XLSX
     # ============================================================
 
-    write.csv(
+    writexl::write_xlsx(
       valid_test_data,
-      input_path,
-      row.names = FALSE
+      input_path
     )
 
 
@@ -575,8 +581,8 @@ testthat::test_that(
       c(
         "risk_rank",
         "user_id",
-        "completion_risk",
-        "completion_probability"
+        "completion_probability",
+        "completion_risk"
       )
     )
 

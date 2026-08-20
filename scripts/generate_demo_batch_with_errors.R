@@ -1,10 +1,14 @@
+library(readxl)
+library(writexl)
+
+
 # ============================================================
 # Generate demo batch with intentional validation errors
 # ============================================================
 
-input_file <- "data/demo_batch_learners.csv"
+input_file <- "data/demo_batch_learners.xlsx"
 
-output_file <- "data/demo_batch_learners_with_errors.csv"
+output_file <- "data/demo_batch_learners_with_errors.xlsx"
 
 
 # ------------------------------------------------------------
@@ -21,10 +25,14 @@ if (!file.exists(input_file)) {
 }
 
 
-demo <- read.csv(
-  input_file,
-  stringsAsFactors = FALSE,
-  check.names = FALSE
+demo <- readxl::read_excel(
+  input_file
+)
+
+demo <- as.data.frame(
+  demo,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
 )
 
 
@@ -86,11 +94,9 @@ demo$n_submissions[81] <- max(
 # Save second demo file
 # ============================================================
 
-write.csv(
+writexl::write_xlsx(
   demo,
-  output_file,
-  row.names = FALSE,
-  na = ""
+  output_file
 )
 
 
@@ -116,6 +122,7 @@ cat(
 
 
 cat("Row 12:\n")
+
 print(
   demo[
     12,
@@ -129,6 +136,7 @@ print(
 
 
 cat("\nRow 37:\n")
+
 print(
   demo[
     37,
@@ -142,6 +150,7 @@ print(
 
 
 cat("\nRow 81:\n")
+
 print(
   demo[
     81,

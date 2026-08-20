@@ -33,12 +33,33 @@ testthat::test_that(
     )
 
 
+    testthat::expect_identical(
+      names(result),
+      c(
+        "risk_rank",
+        "user_id",
+        "completion_probability",
+        "completion_risk"
+      )
+    )
+
+
     testthat::expect_equal(
       result$user_id,
       c(
         1001,
         1002,
         1003
+      )
+    )
+
+
+    testthat::expect_equal(
+      result$completion_probability,
+      c(
+        0.10,
+        0.40,
+        0.80
       )
     )
 
@@ -98,6 +119,17 @@ testthat::test_that(
     testthat::expect_equal(
       nrow(result),
       2L
+    )
+
+
+    testthat::expect_identical(
+      names(result),
+      c(
+        "risk_rank",
+        "user_id",
+        "completion_probability",
+        "completion_risk"
+      )
     )
 
 
@@ -177,6 +209,17 @@ testthat::test_that(
       result$risk_rank,
       seq_len(
         nrow(result)
+      )
+    )
+
+
+    testthat::expect_identical(
+      names(result),
+      c(
+        "risk_rank",
+        "user_id",
+        "completion_probability",
+        "completion_risk"
       )
     )
   }
