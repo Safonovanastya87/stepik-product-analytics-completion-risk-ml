@@ -300,13 +300,13 @@ build_retention_queue <- function(
     learner_id =
       ranked_predictions[[id_col]],
 
-    completion_risk =
-      ranked_predictions$
-        completion_risk,
-
     completion_probability =
       ranked_predictions$
         completion_probability,
+
+    completion_risk =
+      ranked_predictions$
+        completion_risk,
 
     stringsAsFactors = FALSE,
     check.names = FALSE
