@@ -541,7 +541,7 @@ validate_batch_rows <- function(data) {
   if (length(invalid_rows) == 0L) {
 
     validation_errors <- data.frame(
-      Row = integer(),
+      `XLSX row` = integer(),
       `User ID` = character(),
       Problem = character(),
       check.names = FALSE,
@@ -580,7 +580,7 @@ validate_batch_rows <- function(data) {
 
 
           data.frame(
-            Row = row_number,
+            `XLSX row` = row_number + 1L,
             `User ID` =
               as.character(raw_user_id),
             Problem = paste(
