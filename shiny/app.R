@@ -2711,28 +2711,6 @@ server <- function(
 
 
   # ==========================================================
-  # Reset Batch XLSX whenever the user returns to the tab
-  # ==========================================================
-
-  observeEvent(
-    input$prediction_mode,
-    {
-
-      if (
-        identical(
-          input$prediction_mode,
-          "batch"
-        )
-      ) {
-
-        reset_batch_state()
-      }
-    },
-    ignoreInit = TRUE
-  )
-
-
-  # ==========================================================
   # Batch file
   # ==========================================================
 
